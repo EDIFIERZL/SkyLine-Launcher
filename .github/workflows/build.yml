@@ -10,6 +10,7 @@ on:
 env:
   NODE_VERSION: '22'
   CARGO_TERM_COLOR: always
+  PATH: ${{ github.workspace }}/node_modules/.bin:${{ env.PATH }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -208,7 +209,7 @@ jobs:
           key: ${{ runner.os }}-cargo-macos-x64-${{ hashFiles('src-tauri/Cargo.lock') }}
 
       - name: Install system dependencies
-        run: brew install libappindicator gtk+3
+        run: brew install libayatana-appindicator gtk+3
 
       - name: Build Tauri app
         run: npx tauri build
@@ -271,7 +272,7 @@ jobs:
           key: ${{ runner.os }}-cargo-macos-arm64-${{ hashFiles('src-tauri/Cargo.lock') }}
 
       - name: Install system dependencies
-        run: brew install libappindicator gtk+3
+        run: brew install libayatana-appindicator gtk+3
 
       - name: Build Tauri app (ARM64)
         run: npx tauri build --target aarch64-apple-darwin
