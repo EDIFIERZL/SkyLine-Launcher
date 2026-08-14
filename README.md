@@ -202,7 +202,7 @@ src-tauri/src/
 skyline-launcher/
 ├── package.json            # 依赖：React 19, MUI 9, Zustand 5, Tauri 2, Tailwind v4
 ├── vite.config.ts
-├── tsconfig*.json
+├── tsconfig.json
 ├── src/                    # 前端
 ├── src-tauri/              # Rust 后端（Cargo.toml 见上文）
 ├── dist/                   # 构建产物
