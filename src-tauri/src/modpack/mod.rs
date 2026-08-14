@@ -272,6 +272,10 @@ pub async fn search_datapacks(query: &str, limit: u32, offset: u32, game_version
     search_modrinth_ex(query, limit, offset, "datapack", None, game_version, None).await
 }
 
+pub async fn search_worlds(query: &str, limit: u32, offset: u32, game_version: Option<&str>) -> Result<Vec<ModrinthProject>, String> {
+    search_modrinth_ex(query, limit, offset, "world", None, game_version, None).await
+}
+
 pub async fn recommended_mods(limit: u32, game_version: Option<&str>, loaders: Option<&[String]>) -> Result<Vec<ModrinthProject>, String> {
     search_modrinth_ex("", limit, 0, "mod", Some("downloads"), game_version, loaders).await
 }
@@ -286,6 +290,14 @@ pub async fn recommended_shader_packs(limit: u32, game_version: Option<&str>) ->
 
 pub async fn recommended_modpacks(limit: u32, game_version: Option<&str>) -> Result<Vec<ModrinthProject>, String> {
     search_modrinth_ex("", limit, 0, "modpack", Some("downloads"), game_version, None).await
+}
+
+pub async fn recommended_datapacks(limit: u32, game_version: Option<&str>) -> Result<Vec<ModrinthProject>, String> {
+    search_modrinth_ex("", limit, 0, "datapack", Some("downloads"), game_version, None).await
+}
+
+pub async fn recommended_worlds(limit: u32, game_version: Option<&str>) -> Result<Vec<ModrinthProject>, String> {
+    search_modrinth_ex("", limit, 0, "world", Some("downloads"), game_version, None).await
 }
 
 pub async fn search_modpacks(query: &str, limit: u32, offset: u32, game_version: Option<&str>) -> Result<Vec<ModrinthProject>, String> {

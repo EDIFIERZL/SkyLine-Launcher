@@ -64,12 +64,12 @@ pub async fn expot_launch_script(
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PemissionsExt;
+        use std::os::unix::fs::PermissionsExt;
         let mut pems = std::fs::metadata(&output)
             .map_err(|e| e.to_string())?
-            .pemissions();
+            .permissions();
         pems.set_mode(0o755);
-        std::fs::set_pemissions(&output, pems).map_err(|e| e.to_string())?;
+        std::fs::set_permissions(&output, pems).map_err(|e| e.to_string())?;
     }
 
     Ok(generated)

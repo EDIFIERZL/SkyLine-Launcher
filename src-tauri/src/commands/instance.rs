@@ -823,6 +823,43 @@ pub async fn import_world_zip(
 }
 
 #[tauri::command]
+pub async fn import_world_from_url(
+    url: String,
+    filename: String,
+    instance_id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<String, String> {
+    let temp = std::env::temp_dir();
+    let threads = crate::commands::instance::load_download_threads();
+    let app2 = app_handle.clone();
+    let path = crate::modpack::download_file_to(&url, &filename, &temp, move |dl, all| {
+        let pct = if all > 0 { dl as f64 / all as f64 } else { 0.0 };
+        let _ = app2.emit(
+            "install-progress",
+            &crate::mc::install::InstallProgress {
+                stage: "world".into(),
+                progress: pct * 0.9,
+                message: format!("正在下载地图... ({:.0}%)", pct * 100.0),
+            },
+        );
+    }, threads)
+    .await?;
+
+    let game_di = manager::get_instance_mc_dir(&instance_id)?;
+    let world_name = crate::mc::world::import_world(&game_di, &std::path::PathBuf::from(&path))?;
+    std::fs::remove_file(&path).ok();
+    let _ = app_handle.emit(
+        "install-progress",
+        &crate::mc::install::InstallProgress {
+            stage: "world".into(),
+            progress: 1.0,
+            message: format!("地图「{}」安装完成", world_name),
+        },
+    );
+    Ok(world_name)
+}
+
+#[tauri::command]
 pub async fn delete_world(instance_id: String, world_name: String) -> Result<(), String> {
     let game_di = manager::get_instance_mc_dir(&instance_id)?;
     crate::mc::world::delete_world(&game_di, &world_name)

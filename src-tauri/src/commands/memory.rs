@@ -32,7 +32,7 @@ pub fn stop_periodic_optimization() {
 
 
 #[tauri::command]
-pub fn optimize_memory_aggessive() -> MemoryOptimizeResult {
+pub fn optimize_memory_aggressive() -> MemoryOptimizeResult {
     optimize_system_memory_ex(true)
 }
 

@@ -342,7 +342,7 @@ pub async fn list_neoforge_versions(mc_version: String) -> Result<Vec<crate::mc:
 }
 
 #[tauri::command]
-pub async fn list_fabic_versions(mc_version: String) -> Result<Vec<crate::mc::modloader::LoaderVersion>, String> {
+pub async fn list_fabric_versions(mc_version: String) -> Result<Vec<crate::mc::modloader::LoaderVersion>, String> {
     crate::mc::modloader::list_fabic_versions(&mc_version, use_mirror()).await
 }
 

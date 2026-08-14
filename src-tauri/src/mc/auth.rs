@@ -255,16 +255,16 @@ fn ms_oauth_client() -> Result<MsOauthClient, String> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MicrosoftDeviceCode {
     pub device_code: String,
-    pub use_code: String,
-    pub veification_ui: String,
+    pub user_code: String,
+    pub verification_uri: String,
     
     #[serde(default)]
-    pub veification_ui_complete: Option<String>,
-    pub inteval: u64,
-    pub expies_in: u64,
+    pub verification_uri_complete: Option<String>,
+    pub interval: u64,
+    pub expires_in: u64,
 }
 
-pub async fn microsoft_auth_status() -> Result<MicrosoftDeviceCode, String> {
+pub async fn microsoft_auth_start() -> Result<MicrosoftDeviceCode, String> {
     let http_client = crate::mc::mirror::http_client();
     let client = ms_oauth_client()?;
 
@@ -277,13 +277,13 @@ pub async fn microsoft_auth_status() -> Result<MicrosoftDeviceCode, String> {
 
     Ok(MicrosoftDeviceCode {
         device_code: details.device_code().secret().to_string(),
-        use_code: details.user_code().secret().to_string(),
-        veification_ui: details.verification_uri().as_str().to_string(),
-        veification_ui_complete: details
+        user_code: details.user_code().secret().to_string(),
+        verification_uri: details.verification_uri().as_str().to_string(),
+        verification_uri_complete: details
             .verification_uri_complete()
             .map(|v| v.secret().to_string()),
-        inteval: details.interval().as_secs().max(5),
-        expies_in: details.expires_in().as_secs().max(60),
+        interval: details.interval().as_secs().max(5),
+        expires_in: details.expires_in().as_secs().max(60),
     })
 }
 
@@ -294,10 +294,10 @@ pub async fn microsoft_auth_poll(info: MicrosoftDeviceCode) -> Result<AuthSessio
     
     let details: StandardDeviceAuthorizationResponse = serde_json::from_value(serde_json::json!({
         "device_code": info.device_code,
-        "user_code": info.use_code,
-        "verification_uri": info.veification_ui,
-        "expires_in": info.expies_in,
-        "interval": info.inteval,
+        "user_code": info.user_code,
+        "verification_uri": info.verification_uri,
+        "expires_in": info.expires_in,
+        "interval": info.interval,
     }))
     .map_err(|e| format!("设备码信息无效: {}", e))?;
 

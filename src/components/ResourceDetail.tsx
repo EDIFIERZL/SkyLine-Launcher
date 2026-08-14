@@ -240,8 +240,9 @@ export function ResourceDetail({
   const [selectedGameVersion, setSelectedGameVersion] = useState<string>('all')
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set())
 
-  const targetDir = kind === 'resourcepacks' ? 'resourcepacks' : kind === 'shaderpacks' ? 'shaderpacks' : kind === 'datapacks' || kind === 'maps' ? 'datapacks' : 'mods'
+  const targetDir = kind === 'resourcepacks' ? 'resourcepacks' : kind === 'shaderpacks' ? 'shaderpacks' : kind === 'datapacks' ? 'datapacks' : 'mods'
   const isModpack = kind === 'modpacks'
+  const isMap = kind === 'maps'
 
   const searchModrinthFn = (query: string) => {
     const limit = 5
@@ -249,7 +250,8 @@ export function ResourceDetail({
     const gv = gameVersion || null
     if (kind === 'resourcepacks') return invoke<ModrinthProject[]>('search_resource_packs', { query, limit, offset, gameVersion: gv })
     if (kind === 'shaderpacks') return invoke<ModrinthProject[]>('search_shader_packs', { query, limit, offset, gameVersion: gv })
-    if (kind === 'datapacks' || kind === 'maps') return invoke<ModrinthProject[]>('search_datapacks', { query, limit, offset, gameVersion: gv })
+    if (kind === 'datapacks') return invoke<ModrinthProject[]>('search_datapacks', { query, limit, offset, gameVersion: gv })
+    if (kind === 'maps') return invoke<ModrinthProject[]>('search_worlds', { query, limit, offset, gameVersion: gv })
     if (kind === 'modpacks') return invoke<ModrinthProject[]>('search_modpacks', { query, limit, offset, gameVersion: gv })
     return invoke<ModrinthProject[]>('search_modrinth_mods', { query, limit, offset, gameVersion: gv })
   }
@@ -377,13 +379,21 @@ export function ResourceDetail({
   const doMrDownload = async (v: ModrinthVersion) => {
     if (isModpack) {
       await startTask(v.name, () => invoke('install_modrinth_modpack', { versionId: v.id }))
+    } else if (isMap) {
+      if (!targetInstanceId) {
+        setError('请先创建或选择目标实例')
+        return
+      }
+      await startTask(v.name, () =>
+        invoke('install_modrinth_map', { versionId: v.id, instanceId: targetInstanceId }),
+      )
     } else {
       if (!targetInstanceId) {
         setError('请先创建或选择目标实例')
         return
       }
       await startTask(v.name, () =>
-        invoke('download_modrinth_mod', { versionId: v.id, instanceId: targetInstanceId, target: targetDir }),
+        invoke('install_modrinth_content', { versionId: v.id, instanceId: targetInstanceId, target: targetDir }),
       )
     }
   }
@@ -392,6 +402,14 @@ export function ResourceDetail({
     if (isModpack) {
       await startTask(f.display_name, () =>
         invoke('install_curseforge_modpack', { fileId: f.id, fileName: f.file_name, downloadUrl: f.download_url }),
+      )
+    } else if (isMap) {
+      if (!targetInstanceId) {
+        setError('请先创建或选择目标实例')
+        return
+      }
+      await startTask(f.display_name, () =>
+        invoke('import_world_from_url', { url: f.download_url, filename: f.file_name, instanceId: targetInstanceId }),
       )
     } else {
       if (!targetInstanceId) {
@@ -792,9 +810,9 @@ export function ResourceDetail({
                             <Box className="flex flex-col items-center gap-1.5 shrink-0 pl-3 border-l border-surface-200 dark:border-surface-700/60">
                               <Button size="small" loading={busy} onClick={() => handleDownload(item)}>
                                 <DownloadIcon className="w-3.5 h-3.5 mr-1" />
-                                {isModpack ? '安装' : '下载'}
+                                {isModpack || isMap ? '安装' : '下载'}
                               </Button>
-                              {item.source === 'modrinth' && !isModpack && (
+                              {item.source === 'modrinth' && !isModpack && !isMap && (
                                 <Button size="small" variant="outlined" loading={busy} onClick={() => handleDownloadDeps(item)}>
                                   <PackageOpen className="w-3.5 h-3.5 mr-1" />
                                   下载前置

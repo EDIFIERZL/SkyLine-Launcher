@@ -302,6 +302,8 @@ mod windows_impl {
 #[cfg(not(target_os = "windows"))]
 mod windows_impl {
     pub fn optimize(_deep: bool) {}
+    pub fn optimize_best() {}
+    pub fn optimize_silent() {}
 }
 
 pub use windows_impl::*;

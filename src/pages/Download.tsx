@@ -374,7 +374,7 @@ export function Download() {
         } else if (tab === 'datapacks') {
           res = await invoke<ModrinthProject[]>('search_datapacks', { query, limit: 20, offset: newOffset, gameVersion: gv })
         } else if (tab === 'maps') {
-          res = await invoke<ModrinthProject[]>('search_datapacks', { query, limit: 20, offset: newOffset, gameVersion: gv })
+          res = await invoke<ModrinthProject[]>('search_worlds', { query, limit: 20, offset: newOffset, gameVersion: gv })
         } else {
           res = await invoke<ModrinthProject[]>('search_modpacks', { query, limit: 20, offset: newOffset, gameVersion: gv })
         }
@@ -416,6 +416,8 @@ export function Download() {
       tab === 'mods' ? 'recommended_mods'
       : tab === 'resourcepacks' ? 'recommended_resource_packs'
       : tab === 'shaderpacks' ? 'recommended_shader_packs'
+      : tab === 'datapacks' ? 'recommended_datapacks'
+      : tab === 'maps' ? 'recommended_worlds'
       : 'recommended_modpacks'
     setRecsLoading(true)
     invoke<ModrinthProject[]>(cmd, { limit: 12, gameVersion: gv, loaders: ldrs })

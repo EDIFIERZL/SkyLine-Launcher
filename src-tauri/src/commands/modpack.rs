@@ -76,6 +76,16 @@ pub async fn recommended_modpacks(limit: u32, game_version: Option<String>) -> R
 }
 
 #[tauri::command]
+pub async fn recommended_datapacks(limit: u32, game_version: Option<String>) -> Result<Vec<modpack::ModrinthProject>, String> {
+    modpack::recommended_datapacks(limit, game_version.as_deref()).await
+}
+
+#[tauri::command]
+pub async fn recommended_worlds(limit: u32, game_version: Option<String>) -> Result<Vec<modpack::ModrinthProject>, String> {
+    modpack::recommended_worlds(limit, game_version.as_deref()).await
+}
+
+#[tauri::command]
 pub async fn search_resource_packs(query: String, limit: u32, offset: u32, game_version: Option<String>) -> Result<Vec<modpack::ModrinthProject>, String> {
     modpack::search_resource_packs(&query, limit, offset, game_version.as_deref(), None).await
 }
@@ -88,6 +98,11 @@ pub async fn search_shader_packs(query: String, limit: u32, offset: u32, game_ve
 #[tauri::command]
 pub async fn search_datapacks(query: String, limit: u32, offset: u32, game_version: Option<String>) -> Result<Vec<modpack::ModrinthProject>, String> {
     modpack::search_datapacks(&query, limit, offset, game_version.as_deref()).await
+}
+
+#[tauri::command]
+pub async fn search_worlds(query: String, limit: u32, offset: u32, game_version: Option<String>) -> Result<Vec<modpack::ModrinthProject>, String> {
+    modpack::search_worlds(&query, limit, offset, game_version.as_deref()).await
 }
 
 #[tauri::command]
@@ -106,17 +121,17 @@ pub async fn get_modrinth_project_detail(slug: String) -> Result<modpack::Modrin
 }
 
 #[tauri::command]
-pub async fn get_cuseforge_project(mod_id: u64) -> Result<modpack::CuseForgeMod, String> {
+pub async fn get_curseforge_project(mod_id: u64) -> Result<modpack::CuseForgeMod, String> {
     modpack::get_cuseforge_project(mod_id).await
 }
 
 #[tauri::command]
-pub async fn get_cuseforge_files(mod_id: u64) -> Result<Vec<modpack::CuseForgeFile>, String> {
+pub async fn get_curseforge_files(mod_id: u64) -> Result<Vec<modpack::CuseForgeFile>, String> {
     modpack::get_cuseforge_files(mod_id).await
 }
 
 #[tauri::command]
-pub async fn search_cuseforge_category(
+pub async fn search_curseforge_category(
     query: String,
     game_version: Option<String>,
     category: Option<String>,
@@ -204,7 +219,7 @@ pub async fn install_modrinth_modpack(
 }
 
 #[tauri::command]
-pub async fn install_cuseforge_modpack(
+pub async fn install_curseforge_modpack(
     file_id: u64,
     file_name: String,
     download_url: String,
@@ -245,12 +260,12 @@ pub async fn export_modrinth_pack(instance_id: String, output_path: String) -> R
 }
 
 #[tauri::command]
-pub async fn expot_cuseforge_pack(instance_id: String, output_path: String) -> Result<String, String> {
+pub async fn export_curseforge_pack(instance_id: String, output_path: String) -> Result<String, String> {
     modpack::modpack::expot_cuseforge_pack(&instance_id, &std::path::PathBuf::from(&output_path)).await
 }
 
 #[tauri::command]
-pub async fn search_cuseforge_mods(query: String, game_version: Option<String>) -> Result<Vec<modpack::CuseForgeMod>, String> {
+pub async fn search_curseforge_mods(query: String, game_version: Option<String>) -> Result<Vec<modpack::CuseForgeMod>, String> {
     modpack::search_cuseforge(&query, game_version.as_deref(), None).await
 }
 
@@ -262,7 +277,7 @@ pub async fn import_modrinth_pack(pack_path: String, app_handle: tauri::AppHandl
 }
 
 #[tauri::command]
-pub async fn impot_cuseforge_pack(pack_path: String, app_handle: tauri::AppHandle) -> Result<String, String> {
+pub async fn import_curseforge_pack(pack_path: String, app_handle: tauri::AppHandle) -> Result<String, String> {
     let instance_id = modpack::modpack::impot_cuseforge_pack(&std::path::PathBuf::from(&pack_path)).await?;
     ensure_game_and_loader(&instance_id, app_handle).await?;
     Ok(instance_id)
@@ -345,10 +360,16 @@ pub async fn resolve_modrinth_dependencies(
 
     let loader = loader.unwrap_or_default();
     let deps = modpack::resolve_modrinth_dependencies(&version_id, &mc_version, &loader).await?;
+    filter_existing_deps(&mods_di, deps).await
+}
 
+async fn filter_existing_deps(
+    mods_di: &std::path::Path,
+    deps: Vec<modpack::ModrinthDependency>,
+) -> Result<Vec<modpack::ModrinthDependency>, String> {
     let mut existing_sha1: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut existing_names: std::collections::HashSet<String> = std::collections::HashSet::new();
-    if let Ok(entries) = std::fs::read_dir(&mods_di) {
+    if let Ok(entries) = std::fs::read_dir(mods_di) {
         for entry in entries.flatten() {
             let p = entry.path();
             if !p.is_file() {
@@ -367,7 +388,7 @@ pub async fn resolve_modrinth_dependencies(
         }
     }
 
-    let mut emaining: Vec<modpack::ModrinthDependency> = Vec::new();
+    let mut remaining: Vec<modpack::ModrinthDependency> = Vec::new();
     for dep in deps {
         let dep_vid = match &dep.version_id {
             Some(v) if !v.is_empty() => v.clone(),
@@ -381,8 +402,179 @@ pub async fn resolve_modrinth_dependencies(
                 continue;
             }
         }
-        emaining.push(dep);
+        remaining.push(dep);
     }
 
-    Ok(emaining)
+    Ok(remaining)
+}
+
+#[tauri::command]
+pub async fn install_modrinth_content(
+    version_id: String,
+    instance_id: String,
+    target: Option<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<serde_json::Value, String> {
+    let mc_di = crate::instance::manager::get_instance_mc_dir(&instance_id)?;
+    let sub_di = target.as_deref().unwrap_or("mods");
+    let dir = mc_di.join(sub_di);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let (mc_version, loader) = match crate::instance::manager::get_instance(&instance_id)? {
+        Some(inst) => {
+            let l = match &inst.modloader {
+                crate::instance::ModLoader::Forge(_) => "forge",
+                crate::instance::ModLoader::NeoForge(_) => "neoforge",
+                crate::instance::ModLoader::Fabric(_) => "fabric",
+                crate::instance::ModLoader::Quilt(_) => "quilt",
+                _ => "",
+            };
+            (inst.version_id.clone(), l.to_string())
+        }
+        None => (String::new(), String::new()),
+    };
+
+    let primary = modpack::fetch_modrinth_version(&version_id).await?;
+    let deps = filter_existing_deps(
+        &dir,
+        modpack::resolve_modrinth_dependencies(&version_id, &mc_version, &loader).await?,
+    )
+    .await?;
+
+    let threads = crate::commands::instance::load_download_threads();
+    let total = (1 + deps.len()) as f64;
+    let mut installed: Vec<String> = Vec::new();
+
+    let primary_file = primary
+        .files
+        .iter()
+        .find(|f| f.primary)
+        .unwrap_or(&primary.files[0]);
+
+    {
+        let app2 = app_handle.clone();
+        let url = primary_file.url.clone();
+        let filename = primary_file.filename.clone();
+        let name = primary.name.clone();
+        let dir2 = dir.clone();
+        let _ = app_handle.emit(
+            "install-progress",
+            &crate::mc::install::InstallProgress {
+                stage: "mod".into(),
+                progress: 0.0,
+                message: format!("正在下载 {}...", name),
+            },
+        );
+        modpack::download_file_to(&url, &filename, &dir2, move |dl, all| {
+            let pct = if all > 0 { dl as f64 / all as f64 } else { 0.0 };
+            let _ = app2.emit(
+                "install-progress",
+                &crate::mc::install::InstallProgress {
+                    stage: "mod".into(),
+                    progress: pct / total,
+                    message: format!("正在下载 {} ({:.0}%)", name, pct * 100.0),
+                },
+            );
+        }, threads)
+        .await?;
+        installed.push(primary_file.filename.clone());
+    }
+
+    for (i, dep) in deps.iter().enumerate() {
+        let dep_vid = match &dep.version_id {
+            Some(v) if !v.is_empty() => v.clone(),
+            _ => continue,
+        };
+        let v = modpack::fetch_modrinth_version(&dep_vid).await?;
+        let file = v.files.iter().find(|f| f.primary).unwrap_or(&v.files[0]);
+        let name = dep
+            .file_name
+            .clone()
+            .unwrap_or_else(|| file.filename.clone());
+        let app2 = app_handle.clone();
+        let url = file.url.clone();
+        let filename = file.filename.clone();
+        let dir2 = dir.clone();
+        let base = (i as f64) + 1.0;
+        let _ = app_handle.emit(
+            "install-progress",
+            &crate::mc::install::InstallProgress {
+                stage: "mod".into(),
+                progress: base / total,
+                message: format!("正在下载前置 {} ({}/{})...", name, i + 1, deps.len()),
+            },
+        );
+        modpack::download_file_to(&url, &filename, &dir2, move |dl, all| {
+            let pct = if all > 0 { dl as f64 / all as f64 } else { 0.0 };
+            let _ = app2.emit(
+                "install-progress",
+                &crate::mc::install::InstallProgress {
+                    stage: "mod".into(),
+                    progress: (base + pct) / total,
+                    message: format!("正在下载前置 {} ({:.0}%)", name, pct * 100.0),
+                },
+            );
+        }, threads)
+        .await?;
+        installed.push(file.filename.clone());
+    }
+
+    let _ = app_handle.emit(
+        "install-progress",
+        &crate::mc::install::InstallProgress {
+            stage: "mod".into(),
+            progress: 1.0,
+            message: format!("安装完成，共 {} 个文件", installed.len()),
+        },
+    );
+
+    Ok(serde_json::json!({
+        "installed": installed,
+        "dependency_count": deps.len(),
+    }))
+}
+
+#[tauri::command]
+pub async fn install_modrinth_map(
+    version_id: String,
+    instance_id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<String, String> {
+    let version = modpack::fetch_modrinth_version(&version_id).await?;
+    let primary = version
+        .files
+        .iter()
+        .find(|f| f.primary)
+        .unwrap_or(&version.files[0]);
+
+    let temp = std::env::temp_dir();
+    let threads = crate::commands::instance::load_download_threads();
+    let app2 = app_handle.clone();
+    let url = primary.url.clone();
+    let filename = primary.filename.clone();
+    let path = modpack::download_file_to(&url, &filename, &temp, move |dl, all| {
+        let pct = if all > 0 { dl as f64 / all as f64 } else { 0.0 };
+        let _ = app2.emit(
+            "install-progress",
+            &crate::mc::install::InstallProgress {
+                stage: "world".into(),
+                progress: pct * 0.9,
+                message: format!("正在下载地图... ({:.0}%)", pct * 100.0),
+            },
+        );
+    }, threads)
+    .await?;
+
+    let mc_di = crate::instance::manager::get_instance_mc_dir(&instance_id)?;
+    let world_name = crate::mc::world::import_world(&mc_di, &std::path::PathBuf::from(&path))?;
+    std::fs::remove_file(&path).ok();
+    let _ = app_handle.emit(
+        "install-progress",
+        &crate::mc::install::InstallProgress {
+            stage: "world".into(),
+            progress: 1.0,
+            message: format!("地图「{}」安装完成", world_name),
+        },
+    );
+    Ok(world_name)
 }

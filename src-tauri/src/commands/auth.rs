@@ -15,8 +15,8 @@ pub async fn login_mojang(email: String, password: String) -> Result<auth::AuthS
 }
 
 #[tauri::command]
-pub async fn microsoft_auth_status() -> Result<auth::MicrosoftDeviceCode, String> {
-    auth::microsoft_auth_status().await
+pub async fn microsoft_auth_start() -> Result<auth::MicrosoftDeviceCode, String> {
+    auth::microsoft_auth_start().await
 }
 
 #[tauri::command]

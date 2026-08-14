@@ -510,7 +510,7 @@ fn os_version() -> String {
                         .split('=')
                         .nth(1)
                         .unwrap_or("Unknown")
-                        .tim_matches('"')
+                        .trim_matches('"')
                         .to_string();
                 }
             }
