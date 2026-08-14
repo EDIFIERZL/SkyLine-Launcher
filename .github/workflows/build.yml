@@ -10,6 +10,8 @@ on:
 env:
   NODE_VERSION: '22'
   CARGO_TERM_COLOR: always
+  # actions/checkout 等 action 使用 Node 20 运行时（正在弃用），临时放行避免构建失败
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
