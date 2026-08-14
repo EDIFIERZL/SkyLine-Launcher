@@ -10,7 +10,6 @@ on:
 env:
   NODE_VERSION: '22'
   CARGO_TERM_COLOR: always
-  PATH: ${{ github.workspace }}/node_modules/.bin:${{ env.PATH }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -97,7 +96,7 @@ jobs:
           }
 
       - name: Build Tauri app
-        run: npx tauri build
+        run: npm run tauri -- build
         env:
           CI: 'true'
 
@@ -160,7 +159,7 @@ jobs:
           }
 
       - name: Build Tauri app (ARM64)
-        run: npx tauri build --target aarch64-pc-windows-msvc
+        run: npm run tauri -- build --target aarch64-pc-windows-msvc
         env:
           CI: 'true'
 
@@ -218,7 +217,7 @@ jobs:
         run: brew install libayatana-appindicator gtk+3
 
       - name: Build Tauri app
-        run: npx tauri build
+        run: npm run tauri -- build
         env:
           CI: 'true'
           # Uncomment and populate the secrets below if you want
@@ -281,7 +280,7 @@ jobs:
         run: brew install libayatana-appindicator gtk+3
 
       - name: Build Tauri app (ARM64)
-        run: npx tauri build --target aarch64-apple-darwin
+        run: npm run tauri -- build --target aarch64-apple-darwin
         env:
           CI: 'true'
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -362,7 +361,7 @@ jobs:
           sudo mv linuxdeploy*.AppImage /usr/local/bin/
 
       - name: Build Tauri app
-        run: npx tauri build
+        run: npm run tauri -- build
         env:
           CI: 'true'
 
@@ -439,7 +438,7 @@ jobs:
           sudo mv linuxdeploy*.AppImage /usr/local/bin/
 
       - name: Build Tauri app (ARM64)
-        run: npx tauri build --target aarch64-unknown-linux-gnu
+        run: npm run tauri -- build --target aarch64-unknown-linux-gnu
         env:
           CI: 'true'
           PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
