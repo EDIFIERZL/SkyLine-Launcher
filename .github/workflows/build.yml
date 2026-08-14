@@ -61,6 +61,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install Node.js dependencies
         run: npm ci
@@ -123,6 +125,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install Node.js dependencies
         run: npm ci
@@ -184,6 +188,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install Node.js dependencies
         run: npm ci
@@ -194,7 +200,7 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Install Rust stable
+      - name: Install Rust stable + ARM64 target
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-apple-darwin
@@ -308,6 +314,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install Node.js dependencies
         run: npm ci
@@ -382,6 +390,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install Node.js dependencies
         run: npm ci
