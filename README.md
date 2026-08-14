@@ -10,7 +10,7 @@
 
   <p align="center">
   <img src="https://img.shields.io/badge/SkyLine Launcher-1.0.0-blue" alt="Version">
-  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%2s0%7C%20Linux-lightgrey" alt="Platform">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%7C%20Linux-lightgrey" alt="Platform">
 </p>
 
 ---
@@ -58,18 +58,16 @@
 | macOS   | （尚不确定支持版本，如无法运行请提交至QQ） |
 | Linux   | 64 位主流发行版                            |
 
-
 ## 更新日志
 
 ### v1.0.0（2026.8.15）
 
 - SkyLine Launcher第一版发布，支持部分功能
 
-
 ---
 
-
 ## 技术栈
+
 - **主要结构**：使用Tauri (React + Rust) 构建
 - **前端**：React + TypeScript + Vite + React Router，使用 Material-UI ， Zustand（stores）状态管理， lucide-react 图标。
 - **后端**：Rust + Tauri v2，使用 @tauri-apps/api 进行 IPC，reqwest 进行网络请求，文件处理用 walkdir/zip 。
@@ -88,6 +86,7 @@ npm run tauri
 ```
 
 ## 项目结构
+
 ```sh
 # 前端：
 src/
