@@ -76,7 +76,7 @@
 
 ```sh
 # 安装依赖
-npm install (为了方便你开发直接把 node_modules也放进来了awa)
+npm install
 
 # 启动热更新开发模式
 npm run tauri dev
