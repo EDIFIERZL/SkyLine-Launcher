@@ -78,7 +78,7 @@ export function MusicPanel() {
         <EmptyState
           icon={<Music2 className="w-10 h-10" />}
           title="音乐库为空"
-          description="点击「添加音乐」选择本地音频文件，将以原始音质播放"
+          description="点击「添加音乐」选择本地音频文件。"
           action={<Button variant="contained" startIcon={<Plus className="w-3.5 h-3.5" />} onClick={addMusic}>添加音乐</Button>}
         />
       ) : (

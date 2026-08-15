@@ -29,12 +29,12 @@ const GAME_MODE_CN: Record<string, string> = {
   survival: '生存',
   creative: '创造',
   adventure: '冒险',
-  spectator: '观战',
+  spectator: '旁观',
   unknown: '未知',
   '0': '生存',
   '1': '创造',
   '2': '冒险',
-  '3': '观战',
+  '3': '旁观',
 }
 function gameModeCn(mode: string | undefined | null): string {
   if (!mode) return '未知'

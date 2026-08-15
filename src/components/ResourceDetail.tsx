@@ -441,7 +441,7 @@ export function ResourceDetail({
         loader,
       })
       if (deps.length === 0) {
-        setToast('此版本没有需要额外下载的前置模组（已有的会自动跳过）')
+        setToast('此版本没有需要额外下载的前置模组')
         return
       }
       for (const dep of deps) {

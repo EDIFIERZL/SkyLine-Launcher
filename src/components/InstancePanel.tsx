@@ -285,7 +285,7 @@ export const InstancePanel = forwardRef<InstancePanelHandle, Props>(function Ins
               </Button>
             </Box>
             <Typography variant="caption" color="text.secondary">
-              选择其他启动器的实例文件夹（如 PCL2 / HMCL 的 instances 目录），其中的每个子文件夹会被识别为一个实例。
+              选择实例文件夹（如 PCL / HMCL 的 .minecraft 目录）。
             </Typography>
             {folders.length === 0 ? (
               <Typography variant="body2" color="text.secondary">尚未添加任何文件夹</Typography>
