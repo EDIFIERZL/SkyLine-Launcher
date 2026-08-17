@@ -63,6 +63,12 @@ async-recursion = "1"
 num_cpus = "1"
 miniz_oxide = "0.9.1"
 
+[profile.release]
+codegen-units = 1
+lto = "off"
+panic = "abort"
+opt-level = 1
+
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
 webview2-com = "0.38"

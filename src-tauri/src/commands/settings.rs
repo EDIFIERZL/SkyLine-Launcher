@@ -88,6 +88,10 @@ pub struct LauncherConfig {
     pub opengl_compat: bool,
     #[serde(default)]
     pub game_folder: Option<String>,
+    #[serde(default)]
+    pub home_style: String,
+    #[serde(default)]
+    pub onboarding_completed: bool,
 }
 
 fn default_glass_intensity() -> f64 {
@@ -137,6 +141,8 @@ impl Default for LauncherConfig {
             jvm_args: Vec::new(),
             opengl_compat: false,
             game_folder: None,
+            home_style: "full".into(),
+            onboarding_completed: false,
         }
     }
 }

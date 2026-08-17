@@ -42,7 +42,8 @@ export function Account() {
   const [msWaiting, setMsWaiting] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [copied, setCopied] = useState(false)
-  const pollAbortRef = useRef<AbortController | null>(null)
+  const msPollRef = useRef<AbortController | null>(null)
+  const lsPollRef = useRef<AbortController | null>(null)
   const [lsDeviceInfo, setLsDeviceInfo] = useState<LittleSkinDeviceCode | null>(null)
   const [lsPolling, setLsPolling] = useState(false)
 
@@ -111,8 +112,8 @@ export function Account() {
   }
 
   const handleMicrosoftCancel = () => {
-    pollAbortRef.current?.abort()
-    pollAbortRef.current = null
+    msPollRef.current?.abort()
+    msPollRef.current = null
     setDeviceCode(null)
     setMsWaiting(false)
     setCountdown(0)
@@ -130,9 +131,9 @@ export function Account() {
   }
 
   const startPolling = useCallback((code: MicrosoftDeviceCode) => {
-    pollAbortRef.current?.abort()
+    msPollRef.current?.abort()
     const controller = new AbortController()
-    pollAbortRef.current = controller
+    msPollRef.current = controller
     setMsWaiting(true)
 
     const poll = async () => {
@@ -157,7 +158,7 @@ export function Account() {
         setCountdown(0)
         if (msg.includes('first party') || msg.includes('does not have consent')) {
           alert('微软授权页面提示"first party application"错误。\n\n这是因为 Azure AD 应用未授予 XboxLive.signin 权限的管理员同意。\n\n解决方法：请前往 Azure Portal → 应用注册 → 选择你的应用 → API 权限 → 点击"为 [租户] 授予管理员同意"按钮。')
-        } else if (!msg.includes('denied') && !msg.includes('expired')) {
+        } else if (!msg.includes('denied') && !msg.includes('expired') && !msg.includes('cancelled')) {
           alert(`登录失败: ${msg}`)
         }
       }
@@ -169,7 +170,7 @@ export function Account() {
     if (deviceCode && !msWaiting) {
       startPolling(deviceCode)
     }
-    return () => { pollAbortRef.current?.abort() }
+    return () => { msPollRef.current?.abort() }
   }, [deviceCode])
 
   
@@ -199,7 +200,7 @@ export function Account() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer)
-          pollAbortRef.current?.abort()
+          msPollRef.current?.abort()
           setDeviceCode(null)
           setMsWaiting(false)
           return 0
@@ -253,9 +254,9 @@ export function Account() {
   }
 
   const startLsPolling = (code: LittleSkinDeviceCode) => {
-    pollAbortRef.current?.abort()
+    lsPollRef.current?.abort()
     const controller = new AbortController()
-    pollAbortRef.current = controller
+    lsPollRef.current = controller
 
     const poll = async () => {
       if (controller.signal.aborted) return
@@ -277,7 +278,7 @@ export function Account() {
         setLsDeviceInfo(null)
         if (msg.includes('invalid_scope')) {
           alert('LittleSkin 授权失败：当前申请的白名单缺少 Yggdrasil 相关权限。\n\n请发送邮件工单申请补充：\nYggdrasil.PlayerProfiles.Select\nYggdrasil.MinecraftToken.Create\nYggdrasil.Server.Join')
-        } else if (!msg.includes('expired') && !msg.includes('拒绝')) {
+        } else if (!msg.includes('expired') && !msg.includes('拒绝') && !msg.includes('cancelled')) {
           alert(`登录失败: ${msg}`)
         }
       }
@@ -286,8 +287,8 @@ export function Account() {
   }
 
   const handleLittleSkinCancel = () => {
-    pollAbortRef.current?.abort()
-    pollAbortRef.current = null
+    lsPollRef.current?.abort()
+    lsPollRef.current = null
     setLsPolling(false)
     setLsDeviceInfo(null)
   }
@@ -297,8 +298,10 @@ export function Account() {
   const handleSwitch = () => setSwitchOpen(true)
   const handleSwitchAccount = (account: SavedAccount) => {
     
-    pollAbortRef.current?.abort()
-    pollAbortRef.current = null
+    msPollRef.current?.abort()
+    lsPollRef.current?.abort()
+    msPollRef.current = null
+    lsPollRef.current = null
     setDeviceCode(null)
     setMsWaiting(false)
     setCountdown(0)

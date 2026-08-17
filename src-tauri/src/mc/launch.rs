@@ -1209,6 +1209,11 @@ pub async fn launch_minecraft(
     })
     .await
     .map_err(|e| e.to_string())?;
+    if let Err(ref e) = verify.0 {
+        crate::mc::crash::mark_abnormal(&get_game_di(&config)).ok();
+        log::warn!("[launch] startup crash detected: {}", e);
+        return Err(format!("[launch-crash]\n{}", e));
+    }
     verify.0?;
 
     
@@ -1242,6 +1247,9 @@ pub fn try_create_cds_archive(
         .arg("-cp")
         .arg(classpath.join(";"))
         .arg(main_class);
+    crate::utils::io::no_window(&mut cmd);
+    cmd.stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
     let status = cmd.status().map_err(|e| format!("Failed to spawn CDS dump: {}", e))?;
     if !status.success() {
         let _ = std::fs::remove_file(archive); 

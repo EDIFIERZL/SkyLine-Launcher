@@ -84,49 +84,58 @@ export default function AiCrash() {
     if (instanceId) {
       const hasExisting = stored.find(s => s.instanceId === instanceId)
       const autoAnalyze = searchParams.get('auto_analyze') === '1'
-      if (!hasExisting) {
-        const newSession = createSession(instanceId)
-        const updated = [newSession, ...stored]
-        setSessions(updated)
-        saveSessions(updated)
-        setActiveId(newSession.id)
-        
-        if (autoAnalyze) {
-          
-          setMessages([{ id: genId(), role: 'assistant', content: '检测到游戏崩溃，正在自动分析崩溃日志...' }])
-          const key = apiKey
-          if (!key) {
-            if (isMountedRef.current) {
-              setMessages(prev => [...prev.slice(0, -1), { id: genId(), role: 'assistant', content: '请先配置 Agnes API Key' }])
-              setShowKeyEditor(true)
-            }
-            return
-          }
-          invoke<string>('analyze_crash_auto', { instanceId, apiKey: key })
-            .then((analysis) => {
-              if (isMountedRef.current) {
-                setMessages(prev => [...prev, { id: genId(), role: 'assistant', content: analysis }])
-              }
-            })
-            .catch((e) => {
-              if (isMountedRef.current) {
-                setMessages(prev => [...prev, { id: genId(), role: 'assistant', content: `分析失败: ${String(e)}` }])
-              }
-            })
-        } else {
-          
-          invoke<string>('read_latest_log', { instanceId }).then((content) => {
-            const tail = content.split('\n').slice(-300).join('\n')
-            setLogContent(tail)
-            setMessages([{ id: genId(), role: 'assistant', content: `检测到实例 \`${instanceId}\` 最近崩溃，已加载 latest.log 最后 300 行。正在自动分析中...` }])
-          }).catch(() => {
-            setMessages([{ id: genId(), role: 'assistant', content: `检测到实例 \`${instanceId}\` 最近崩溃。请描述你遇到的问题，上传截图、视频或崩溃日志文件，我会帮你分析问题。` }])
-          })
+      if (autoAnalyze) {
+        const key = apiKey
+        if (!key) {
+          const base = hasExisting ? hasExisting.messages : []
+          setActiveId(hasExisting?.id ?? null)
+          setMessages(base.length ? base : [{ id: genId(), role: 'assistant' as const, content: '请先配置 Agnes API Key' }])
+          setShowKeyEditor(true)
+          return
         }
+        const base = hasExisting ? hasExisting.messages : []
+        const pending: ChatMsg[] = [...base, { id: genId(), role: 'assistant' as const, content: '检测到游戏启动崩溃，正在自动分析日志...' }]
+        if (!hasExisting) {
+          const newSession = createSession(instanceId)
+          const updated = [newSession, ...stored]
+          setSessions(updated)
+          saveSessions(updated)
+          setActiveId(newSession.id)
+        } else {
+          setActiveId(hasExisting.id)
+        }
+        setMessages(pending)
+        invoke<string>('analyze_crash_auto', { instanceId, apiKey: key })
+          .then((analysis) => {
+            if (isMountedRef.current) {
+              setMessages(prev => [...prev, { id: genId(), role: 'assistant', content: analysis }])
+            }
+          })
+          .catch((e) => {
+            if (isMountedRef.current) {
+              setMessages(prev => [...prev, { id: genId(), role: 'assistant', content: `分析失败: ${String(e)}` }])
+            }
+          })
         return
       }
-      setActiveId(hasExisting.id)
-      setMessages(hasExisting.messages)
+      if (hasExisting) {
+        setActiveId(hasExisting.id)
+        setMessages(hasExisting.messages)
+        return
+      }
+      const newSession = createSession(instanceId)
+      const updated = [newSession, ...stored]
+      setSessions(updated)
+      saveSessions(updated)
+      setActiveId(newSession.id)
+      
+      invoke<string>('read_latest_log', { instanceId }).then((content) => {
+        const tail = content.split('\n').slice(-300).join('\n')
+        setLogContent(tail)
+        setMessages([{ id: genId(), role: 'assistant', content: `检测到实例 \`${instanceId}\` 最近崩溃，已加载 latest.log 最后 300 行。正在自动分析中...` }])
+      }).catch(() => {
+        setMessages([{ id: genId(), role: 'assistant', content: `检测到实例 \`${instanceId}\` 最近崩溃。请描述你遇到的问题，上传截图、视频或崩溃日志文件，我会帮你分析问题。` }])
+      })
       return
     }
 

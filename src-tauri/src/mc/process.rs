@@ -229,6 +229,7 @@ impl GameProcess {
 
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
+        cmd.stdin(Stdio::null());
         crate::utils::io::no_window(&mut cmd);
 
         let mut child = cmd.spawn().map_err(|e| format!("Failed to start Minecraft: {}", e))?;

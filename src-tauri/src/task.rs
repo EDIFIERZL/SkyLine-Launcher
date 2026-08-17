@@ -18,9 +18,10 @@ pub fn run_first_time_tasks() {
         {
             use std::process::Command;
             let path = launcher_root.to_string_lossy().replace('/', "\\");
-            let _ = Command::new("cmd")
-                .args(["/C", "attrib", "+h", &format!("\"{}\"", path)])
-                .output();
+            let mut cmd = Command::new("cmd");
+            cmd.args(["/C", "attrib", "+h", &format!("\"{}\"", path)]);
+            crate::utils::io::no_window(&mut cmd);
+            let _ = cmd.output();
         }
     }
 }

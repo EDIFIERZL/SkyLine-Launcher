@@ -40,18 +40,19 @@ const gradientPresets = [
 
 const SETTINGS_TABS = [
   { value: 'appearance', label: '外观', icon: <Palette className="w-4 h-4" /> },
+  { value: 'preferences', label: '偏好设置', icon: <Sparkles className="w-4 h-4" /> },
   { value: 'game', label: '游戏设置', icon: <Gamepad2 className="w-4 h-4" /> },
   { value: 'launcher', label: '启动器', icon: <Monitor className="w-4 h-4" /> },
   { value: 'about', label: '关于', icon: <Info className="w-4 h-4" /> },
 ]
 
 const CREDIT_LIST = [
-  { name: 'LiChenghao', avatar: '/LiChenghao.jpg', url: 'https://github.com/chenghaolee-2012' },
-  { name: 'ESexplorerZDC', avatar: '/ESexplorerZDC.png', url: 'https://github.com/ExplorerMediaGroup' },
-  { name: 'Yukino_fox', avatar: '/Yukino_fox.jpg', url: 'https://github.com/Yukino-fox' },
-  { name: 'ZhouZhouo_O', avatar: '/ZhouZhouo_O.jpg', url: 'https://github.com/ZhouZhou-oO' },
-  { name: 'Soloev', avatar: '/Soloev.png', url: 'https://github.com/0xarch' },
-  { name: 'MC百科', avatar: '', url: 'https://www.mcmod.cn/' },
+  { name: 'LiChenghao', avatar: '/LiChenghao.jpg', url: 'https://github.com/chenghaolee-2012', contribution: '参与启动器UI开发，成功摆脱了原先的屎山UI' },
+  { name: 'ESexplorerZDC', avatar: '/ESexplorerZDC.png', url: 'https://github.com/ExplorerMediaGroup', contribution: '为启动器提供部分前端设计' },
+  { name: 'Yukino_fox', avatar: '/Yukino_fox.jpg', url: 'https://github.com/Yukino-fox', contribution: '为启动器绘制了SVG图标，具有天生美术体质  ' },
+  { name: 'ZhouZhouo_O', avatar: '/ZhouZhouo_O.jpg', url: 'https://github.com/ZhouZhou-oO', contribution: '为启动器提供部分前端设计' },
+  { name: 'Soloev', avatar: '/Soloev.png', url: 'https://github.com/0xarch', contribution: '为启动器提供部分前端设计' },
+  { name: 'MC百科', avatar: '', url: 'https://www.mcmod.cn/', contribution: '提供模组资料与百科数据支持' },
 ]
 
 function CreditAvatar({ name, src }: { name: string; src: string }) {
@@ -232,7 +233,7 @@ export function Settings() {
               </Typography>
               <Box className="flex gap-2">
                 {[
-                  { value: 'light', label: '浅色', icon: <Sun className="w-5 h-5" /> },
+                  { value: 'light', label: '浅色（beta）', icon: <Sun className="w-5 h-5" /> },
                   { value: 'dark', label: '深色', icon: <Moon className="w-5 h-5" /> },
                   { value: 'system', label: '跟随系统', icon: <Monitor className="w-5 h-5" /> },
                 ].map((opt) => (
@@ -483,6 +484,87 @@ export function Settings() {
                   )}
                 </Box>
               )}
+            </Box>
+          </Card>
+        </Box>
+      )}
+
+      {activeTab === 'preferences' && (
+        <Box className="space-y-5">
+          <Card>
+            <Box className="space-y-4">
+              <Typography variant="subtitle1" className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[var(--accent-color)]" /> 首页风格
+              </Typography>
+              <Box className="flex gap-2">
+                {[
+                  { value: 'full', label: '完整模式', desc: '显示实例详情、模组、截图等' },
+                  { value: 'minimal', label: '简洁模式', desc: '干净清爽，聚焦启动' },
+                ].map((opt) => (
+                  <div key={opt.value} className="flex-1">
+                    <Button
+                      variant={localConfig.home_style === opt.value ? 'contained' : 'outlined'}
+                      onClick={() => handleChange('home_style' as keyof LauncherConfig, opt.value)}
+                      fullWidth
+                      className="!flex-col !py-3 !h-auto"
+                    >
+                      <span className="text-sm font-semibold">{opt.label}</span>
+                      <span className="text-[10px] opacity-70 mt-0.5">{opt.desc}</span>
+                    </Button>
+                  </div>
+                ))}
+              </Box>
+            </Box>
+          </Card>
+
+          <Card>
+            <Box className="space-y-4">
+              <Typography variant="subtitle1" className="flex items-center gap-2">
+                <Palette className="w-4 h-4 text-[var(--accent-color)]" /> 强调色
+              </Typography>
+              <Box className="flex flex-wrap gap-2.5">
+                {accentPresets.map((preset) => (
+                  <button
+                    key={preset.color}
+                    onClick={() => handleChange('accent_color', preset.color)}
+                    className={`w-9 h-9 rounded-xl transition-all duration-150 cursor-pointer relative ${
+                      localConfig.accent_color === preset.color
+                        ? 'ring-2 ring-offset-2 ring-accent-500 scale-110'
+                        : 'hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: preset.color }}
+                    title={preset.name}
+                  >
+                    {localConfig.accent_color === preset.color && (
+                      <svg className="absolute inset-0 w-full h-full p-2 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+                <div className="relative w-9 h-9">
+                  <input
+                    type="color"
+                    value={localConfig.accent_color}
+                    onChange={(e) => handleChange('accent_color', e.target.value)}
+                    className="absolute inset-0 w-full h-full rounded-xl border border-surface-300 cursor-pointer opacity-0"
+                  />
+                  <div className="w-full h-full rounded-xl bg-surface-100 border border-surface-300 flex items-center justify-center text-xs text-surface-500 font-medium">
+                    +
+                  </div>
+                </div>
+              </Box>
+            </Box>
+          </Card>
+
+          <Card>
+            <Box className="space-y-4">
+              <Typography variant="subtitle1" className="flex items-center gap-2">
+                <Image className="w-4 h-4 text-[var(--accent-color)]" /> 背景
+              </Typography>
+              <Typography variant="body2" color="text.secondary" className="text-xs">
+                在「外观」标签页中可配置背景图片、视频或渐变色
+              </Typography>
             </Box>
           </Card>
         </Box>
@@ -838,6 +920,9 @@ export function Settings() {
                 <Typography variant="body2" color="text.secondary" className="mt-0.5">
                   功能全面的MINECRAFT启动器，让玩游戏更方便
                 </Typography>
+                <Typography variant="caption" color="text.secondary" className="block mt-1">
+                  本应用使用 GNU Affero General Public License version 3 进行开源
+                </Typography>
               </Box>
             </Box>
 
@@ -888,7 +973,7 @@ export function Settings() {
                   <CreditAvatar name={c.name} src={c.avatar} />
                   <Box className="min-w-0 flex-1">
                     <Typography variant="body2" className="font-medium truncate">{c.name}</Typography>
-                    <Typography variant="caption" color="text.secondary" className="block truncate max-w-[180px]">{c.url}</Typography>
+                    <Typography variant="caption" color="text.secondary" className="block whitespace-normal leading-snug">{c.contribution}</Typography>
                   </Box>
                   <ExternalLink className="w-3.5 h-3.5 text-surface-400 shrink-0" />
                 </button>
@@ -897,14 +982,37 @@ export function Settings() {
           </Card>
 
           <Card>
-            <Box className="flex items-center gap-3">
-              <img src={encodeURI('/四维空间.png')} alt="四维空间工作室" className="w-12 h-12 rounded-xl object-contain bg-surface-100 dark:bg-surface-800 p-1" />
-              <Box>
-                <Typography variant="subtitle2" className="font-semibold">版权所有</Typography>
-                <Typography variant="body2" color="text.secondary" className="mt-0.5">
-                  版权归四维空间工作室及贡献者所有
+            <Box className="space-y-3">
+              <Box className="flex items-center gap-3">
+                <img src={encodeURI('/四维空间.png')} alt="四维空间工作室" className="w-12 h-12 rounded-xl object-contain bg-surface-100 dark:bg-surface-800 p-1" />
+                <Box>
+                  <Typography variant="subtitle2" className="font-semibold">四维空间工作室</Typography>
+                  <Typography variant="body2" color="text.secondary" className="mt-0.5">
+                    Copyright (C) 2026~present 四维空间工作室
+                  </Typography>
+                </Box>
+              </Box>
+              <Box className="bg-surface-50 dark:bg-surface-800/60 rounded-lg p-3">
+                <Typography variant="caption" color="text.secondary" className="block leading-relaxed">
+                  SkyLine Launcher 非 MINECRAFT 官方产品。未经 MOJANG 或 MICROSOFT 批准，也不与 MOJANG 或 MICROSOFT 关联。
                 </Typography>
               </Box>
+            </Box>
+          </Card>
+
+          <Card>
+            <Box className="flex items-center justify-between gap-3">
+              <Box className="flex items-center gap-3">
+                <Box>
+                  <Typography variant="subtitle2" className="font-semibold">EasyTier</Typography>
+                  <Typography variant="body2" color="text.secondary" className="mt-0.5">
+                    Copyright © EasyTier Contributors. Licensed under the Apache License 2.0.
+                  </Typography>
+                </Box>
+              </Box>
+              <Button size="small" variant="outlined" startIcon={<ExternalLink className="w-4 h-4" />} onClick={() => shellOpen('https://github.com/EasyTier/EasyTier/blob/main/LICENSE')}>
+                查看许可文档
+              </Button>
             </Box>
           </Card>
         </Box>

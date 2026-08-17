@@ -120,8 +120,8 @@ pub async fn fetch_java_list(major_version: u32) -> Result<Vec<JavaManifest>, St
         else if cfg!(target_os = "macos") { "mac" }
         else { "linux" };
 
-    let ach = if cfg!(target_ach = "x86_64") { "x64" }
-        else if cfg!(target_ach = "aarch64") { "aarch64" }
+    let ach = if cfg!(target_arch = "x86_64") { "x64" }
+        else if cfg!(target_arch = "aarch64") { "aarch64" }
         else { "x64" };
 
     let url = format!(

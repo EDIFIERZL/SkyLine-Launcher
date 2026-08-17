@@ -91,8 +91,9 @@ pub fn launch_terracotta(app: AppHandle) -> Result<(), String> {
     let pot_file = std::env::temp_dir().join("skyline-terracotta-port.json");
     let _ = std::fs::remove_file(&pot_file);
 
-    StdCommand::new(&exe_path)
-        .arg("--hmcl")
+    let mut cmd = StdCommand::new(&exe_path);
+    crate::utils::io::no_window(&mut cmd);
+    cmd.arg("--hmcl")
         .arg(&pot_file)
         .spawn()
         .map_err(|e| format!("启动陶瓦联机失败: {}", e))?;
@@ -130,8 +131,9 @@ pub async fn ensure_terracotta_running(
     let port_file = std::env::temp_dir().join("skyline-terracotta-port.json");
     let _ = std::fs::remove_file(&port_file);
 
-    StdCommand::new(&exe_path)
-        .arg("--hmcl")
+    let mut cmd = StdCommand::new(&exe_path);
+    crate::utils::io::no_window(&mut cmd);
+    cmd.arg("--hmcl")
         .arg(&port_file)
         .spawn()
         .map_err(|e| format!("启动陶瓦联机失败: {}", e))?;

@@ -34,6 +34,7 @@ import {
   WifiOff,
   Camera,
   Trash2,
+  LayoutDashboard,
 } from 'lucide-react'
 import type { Instance, VersionManifest, GameProcessInfo, InstallProgress, ModInfo, ServerStatus, LauncherConfig, WorldInfo, LaunchProgressEvent, MultiplayerServer, AuthSession, ScreenshotInfo } from '../types'
 
@@ -474,6 +475,10 @@ export function Home() {
       const lines = msg.split('\n').filter(l => l.trim())
       const key = lines.find(l => /ERROR|Exception|Error|Incompatible|Could not|找不到|无法|失败|退出/.test(l)) ?? lines[0]
       setSnack({ open: true, message: `启动失败: ${key ?? msg}`, severity: 'error' })
+      if (msg.includes('[launch-crash]')) {
+        setSnack({ open: true, message: '游戏启动时崩溃，正在进入 AI 错误分析...', severity: 'info' })
+        navigate(`/ai?instance=${selected.id}&auto_analyze=1`)
+      }
     }
     finally { if (unsub) unsub(); if (launchUnsub.f) launchUnsub.f(); setLaunching(false); setTimeout(() => useDownloadStore.getState().removeTask(tid), 3000) }
   }
@@ -545,6 +550,10 @@ export function Home() {
       const lines = msg.split('\n').filter(l => l.trim())
       const key = lines.find(l => /ERROR|Exception|Error|Incompatible|Could not|找不到|无法|失败|退出/.test(l)) ?? lines[0]
       setSnack({ open: true, message: `启动失败: ${key ?? msg}`, severity: 'error' })
+      if (msg.includes('[launch-crash]')) {
+        setSnack({ open: true, message: '游戏启动时崩溃，正在进入 AI 错误分析...', severity: 'info' })
+        navigate(`/ai?instance=${selected.id}&auto_analyze=1`)
+      }
     }
     finally { if (unsub) unsub(); if (launchUnsub.f) launchUnsub.f(); setLaunching(false); setTimeout(() => useDownloadStore.getState().removeTask(tid), 3000) }
   }
@@ -888,6 +897,22 @@ export function Home() {
         onAnalyze={(instanceId) => { setCrashInfo(null); navigate(`/ai?instance=${instanceId}&auto_analyze=1`) }}
       />
       <SnackbarAlert open={snack.open} onClose={() => setSnack({ ...snack, open: false })} message={snack.message} severity={snack.severity} />
+
+      <Box className="fixed bottom-4 right-4 z-50" title={config.home_style === 'minimal' ? '切换到完整模式' : '切换到简洁模式'}>
+        <Button
+          variant="outlined"
+          size="small"
+          className="!rounded-full !min-w-0 !p-2 !bg-white/80 dark:!bg-surface-800/80 backdrop-blur-sm !border-surface-200/60 dark:!border-surface-700/40"
+          onClick={() => {
+            const next = config.home_style === 'minimal' ? 'full' : 'minimal'
+            const nextConfig = { ...config, home_style: next }
+            useSettingsStore.getState().setConfig(nextConfig)
+            invoke('save_config', { config: nextConfig }).catch(() => {})
+          }}
+        >
+          <LayoutDashboard className="w-4 h-4" />
+        </Button>
+      </Box>
     </Box>
   )
 }

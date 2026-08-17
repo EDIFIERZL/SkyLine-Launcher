@@ -77,12 +77,19 @@ pub async fn analyze_crash_auto(instance_id: String, api_key: String) -> Result<
     
     let mc_di = crate::instance::manager::get_instance_mc_dir(&instance_id)
         .map_err(|e| format!("获取实例目录失败: {}", e))?;
-    let log_path = mc_di.join("logs").join("latest.log");
+    let logs_di = mc_di.join("logs");
+    let log_path = logs_di.join("latest.log");
     
-    let log_content = std::fs::read_to_string(&log_path)
-        .map_err(|e| format!("读取日志失败: {}", e))?;
+    let mut log_content = std::fs::read_to_string(&log_path).ok();
+    if log_content.as_ref().map(|c| c.trim().is_empty()).unwrap_or(true) {
+        log_content = std::fs::read_to_string(logs_di.join("skyline-launch.log")).ok();
+    }
+    let log_content = log_content
+        .filter(|c| !c.trim().is_empty())
+        .map(|c| c.chars().rev().take(20000).collect::<String>().chars().rev().collect::<String>())
+        .ok_or_else(|| "未找到崩溃日志（latest.log / skyline-launch.log 均不存在）".to_string())?;
     
-    let content = format!("游戏崩溃了，请帮我分析这个崩溃日志：\n\n--- 崩溃日志内容 ---\n{}", log_content);
+    let content = format!("游戏启动时崩溃了，请帮我分析这个崩溃日志，找出崩溃原因（重点关注模组不兼容、模组加载失败等启动阶段问题）并给出详细可用、分步骤的解决方案：\n\n--- 崩溃日志内容 ---\n{}", log_content);
     
     
     ai_chat(

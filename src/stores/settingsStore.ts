@@ -40,6 +40,8 @@ const defaultConfig: LauncherConfig = {
   liquid_glass_intensity: 1.0,
   jvm_args: [],
   opengl_compat: false,
+  home_style: 'full',
+  onboarding_completed: false,
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({

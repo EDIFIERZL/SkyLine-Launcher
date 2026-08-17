@@ -166,6 +166,8 @@ export interface LauncherConfig {
     jvm_args: string[]
     opengl_compat?: boolean
     game_folder?: string | null
+    home_style?: string
+    onboarding_completed?: boolean
   }
 
 export interface VersionSetting {
