@@ -61,12 +61,13 @@ pub async fn get_instance(id: String) -> Result<Option<Instance>, String> {
 }
 
 #[tauri::command]
+#[allow(deprecated)]
 pub async fn open_instance_folder(
     instance_id: String,
     subdir: Option<String>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    use tauri::Manager;
+    
     use tauri_plugin_shell::ShellExt;
 
     let instance = manager::get_instance(&instance_id)?
@@ -520,7 +521,7 @@ pub async fn list_multiplayer_servers(
 
 /// Get world info including seed
 #[tauri::command]
-pub async fn get_world_info(instance_id: String, world_path: String) -> Result<crate::mc::world::WorldInfo, String> {
+pub async fn get_world_info(_instance_id: String, world_path: String) -> Result<crate::mc::world::WorldInfo, String> {
     let path = std::path::PathBuf::from(&world_path);
     crate::mc::world::get_world_info(&path)
 }
@@ -528,7 +529,7 @@ pub async fn get_world_info(instance_id: String, world_path: String) -> Result<c
 /// Generate map preview for a world
 #[tauri::command]
 pub async fn generate_map_preview(
-    instance_id: String,
+    _instance_id: String,
     world_path: String,
     center_chunk_x: i32,
     center_chunk_z: i32,
@@ -564,7 +565,7 @@ pub async fn world_map_region_with_structures(
         .ok_or_else(|| "Region file not found".to_string())?;
     let structures = if let Some(seed) = world_info.seed {
         // Get all structures from seed, then filter to those near this region
-        let nearby = region_x.abs() + region_z.abs();
+        let _nearby = region_x.abs() + region_z.abs();
         let range = 3i32; // structures within ±3 regions of the requested tile
         let min_rx = region_x - range;
         let max_rx = region_x + range;
@@ -756,6 +757,7 @@ pub async fn read_screenshot_base64(instance_id: String, file_name: String) -> R
 
 
 #[tauri::command]
+#[allow(deprecated)]
 pub async fn open_screenshot(
     instance_id: String,
     file_name: String,
@@ -783,6 +785,7 @@ pub async fn open_screenshot(
 
 
 #[tauri::command]
+#[allow(deprecated)]
 pub async fn open_file(path: String, app_handle: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_shell::ShellExt;
     if path.contains('/') || path.contains('\\') {

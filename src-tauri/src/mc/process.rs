@@ -326,7 +326,7 @@ impl GameProcess {
         let log_tx_watcher = log_tx.clone();
         let child_async_watcherr = child_ac.clone();
         thread::spawn(move || {
-            let mut last_log_time = Instant::now();
+            let last_log_time = Instant::now();
 
             loop {
                 thread::sleep(Duration::from_secs(2));

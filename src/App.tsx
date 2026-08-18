@@ -27,9 +27,9 @@ import type { LauncherConfig } from './types'
 function HomeRouter() {
   const { config } = useSettingsStore()
   if (config.home_style === 'minimal') {
-    return <MinimalHome />
+    return <div key="minimal" className="home-mode-transition h-full"><MinimalHome /></div>
   }
-  return <Home />
+  return <div key="full" className="home-mode-transition h-full"><Home /></div>
 }
 
 function App() {

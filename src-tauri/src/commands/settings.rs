@@ -90,6 +90,8 @@ pub struct LauncherConfig {
     pub game_folder: Option<String>,
     #[serde(default)]
     pub home_style: String,
+    #[serde(default = "default_show_home_news")]
+    pub show_home_news: bool,
     #[serde(default)]
     pub onboarding_completed: bool,
 }
@@ -100,6 +102,10 @@ fn default_glass_intensity() -> f64 {
 
 fn default_server_card_size() -> u32 {
     80
+}
+
+fn default_show_home_news() -> bool {
+    true
 }
 
 impl Default for LauncherConfig {
@@ -142,6 +148,7 @@ impl Default for LauncherConfig {
             opengl_compat: false,
             game_folder: None,
             home_style: "full".into(),
+            show_home_news: true,
             onboarding_completed: false,
         }
     }

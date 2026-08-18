@@ -162,8 +162,8 @@ fn phase1_pecise_match(
     conflicting_mods: &mut Vec<String>,
 ) -> (Option<String>, Option<String>, Vec<String>, Option<CrashSeverity>) {
     let mut suggestions: Vec<String> = Vec::new();
-    let mut exception: Option<String> = None;
-    let mut description: Option<String> = None;
+    let exception: Option<String> = None;
+    let description: Option<String> = None;
     let mut serverity: Option<CrashSeverity> = None;
 
     if lowe.contains("openj9") || lowe.contains("j9vm") || lowe.contains("ibm j9") {

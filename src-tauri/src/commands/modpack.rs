@@ -147,6 +147,14 @@ pub async fn search_curseforge_category(
 }
 
 #[tauri::command]
+pub async fn recommended_curseforge_mods(
+    limit: u32,
+    game_version: Option<String>,
+) -> Result<Vec<modpack::CuseForgeMod>, String> {
+    modpack::recommended_cuseforge_mods(limit, game_version.as_deref()).await
+}
+
+#[tauri::command]
 pub async fn download_file(
     url: String,
     filename: String,
@@ -220,7 +228,7 @@ pub async fn install_modrinth_modpack(
 
 #[tauri::command]
 pub async fn install_curseforge_modpack(
-    file_id: u64,
+    _file_id: u64,
     file_name: String,
     download_url: String,
     app_handle: tauri::AppHandle,

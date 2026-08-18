@@ -260,14 +260,28 @@ export function SkinViewer3D({
     viewer.autoRotateSpeed = 0.5
     viewer.animation = new IdleAnimation()
     viewer.animation.speed = 0.8
-    if (username) {
-      viewer.nameTag = username
+    if (username?.trim()) {
+      viewer.nameTag = username.trim()
       
       
       try {
         
-        ;(viewer as unknown as { nameTagYOffset: number }).nameTagYOffset = -8
-        viewer.nameTag?.scale.setScalar(1.4)
+        ;(viewer as unknown as { nameTagYOffset: number }).nameTagYOffset = 28
+        viewer.nameTag?.scale.setScalar(2.1)
+        // Override canvas width to remove name length limit
+        const nt = viewer.nameTag as any
+        if (nt && nt.canvas) {
+          const ctx = nt.canvas.getContext('2d')
+          if (ctx) {
+            const metrics = ctx.measureText(nt.text || username.trim())
+            const needed = Math.ceil(metrics.width) + 16
+            if (needed > nt.canvas.width) {
+              nt.canvas.width = needed
+              nt.redraw?.() ?? (() => { ctx.font = '24px sans-serif'; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = 3; ctx.strokeText(nt.text || username.trim(), needed / 2, 18); ctx.fillText(nt.text || username.trim(), needed / 2, 18) })()
+              if (nt.material?.map) nt.material.map.needsUpdate = true
+            }
+          }
+        }
       } catch {}
     }
     try {
@@ -289,6 +303,29 @@ export function SkinViewer3D({
     }
     return viewer
   }, [username, bg, showCape, defaultSkinUrl])
+
+  useEffect(() => {
+    const v = viewerRef.current
+    if (!v || !username) return
+    try {
+      v.nameTag = username.trim() || '玩家'
+      ;(v as unknown as { nameTagYOffset: number }).nameTagYOffset = 28
+      v.nameTag?.scale.setScalar(2.1)
+      const nt = v.nameTag as any
+      if (nt && nt.canvas) {
+        const ctx = nt.canvas.getContext('2d')
+        if (ctx) {
+          const metrics = ctx.measureText(nt.text || username.trim())
+          const needed = Math.ceil(metrics.width) + 16
+          if (needed > nt.canvas.width) {
+            nt.canvas.width = needed
+            nt.redraw?.()
+            if (nt.material?.map) nt.material.map.needsUpdate = true
+          }
+        }
+      }
+    } catch {}
+  }, [username])
 
   useEffect(() => {
     const container = containerRef.current

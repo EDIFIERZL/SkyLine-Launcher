@@ -1,0 +1,7 @@
+{
+  "id": "agnes",
+  "name": "Agnes AI",
+  "endpoint": "https://apihub.agnes-ai.com/v1/chat/completions",
+  "api_format": "openai",
+  "default_model": "agnes-2.5-flash"
+}

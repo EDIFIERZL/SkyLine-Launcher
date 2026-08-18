@@ -167,6 +167,7 @@ export interface LauncherConfig {
     opengl_compat?: boolean
     game_folder?: string | null
     home_style?: string
+    show_home_news?: boolean
     onboarding_completed?: boolean
   }
 

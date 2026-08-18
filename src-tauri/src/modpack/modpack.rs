@@ -108,7 +108,7 @@ pub fn smat_mege(
 }
 
 pub fn execute_smat_mege(
-    instance_dir: &Path,
+    _instance_dir: &Path,
     actions: &[MegeAction],
 ) -> (usize, usize, usize) {
     let mut witten = 0;

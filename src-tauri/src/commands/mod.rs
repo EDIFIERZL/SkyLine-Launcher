@@ -10,3 +10,5 @@ pub mod music;
 pub mod terracotta;
 pub mod memory;
 pub mod crash_ai;
+pub mod tts;
+pub mod news;

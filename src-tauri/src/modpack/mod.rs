@@ -76,10 +76,13 @@ pub struct CuseForgeMod {
     pub summay: String,
     pub downloads: u64,
     pub category: Option<String>,
+    #[serde(rename = "logo_url")]
     pub logo_ul: Option<String>,
     pub authors: Vec<String>,
     pub game_versions: Vec<String>,
     pub date_modified: String,
+    pub categories: Vec<String>,
+    pub license: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,10 +93,329 @@ pub struct CuseForgeFile {
     pub file_date: String,
     pub game_versions: Vec<String>,
     pub loaders: Vec<String>,
-    
+
     pub elease_type: Option<u64>,
     pub file_length: u64,
     pub download_url: String,
+}
+
+/// ── New CurseForge API (CF for Studios / api.curseforge.com) ──
+///
+/// NOTE: Register a free API key at https://console.curseforge.com/ and
+/// replace the placeholder below. The key is embedded in the binary so users
+/// do not need to configure anything.
+const CF_API_KEY: &str = "PLACEHOLDER_REPLACE_WITH_YOUR_KEY";
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewSearchEnvelope {
+    data: CfNewSearchData,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewSearchData {
+    results: Vec<CfNewModResult>,
+    pagination: CfNewPagination,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewPagination {
+    current_page: u32,
+    total_count: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewModResult {
+    id: u64,
+    name: String,
+    slug: String,
+    summary: Option<String>,
+    download_count: Option<u64>,
+    logo_url: Option<String>,
+    authors: Vec<CfNewAuthor>,
+    #[serde(rename = "latestFile")]
+    latest_file: Option<CfNewLatestFile>,
+    #[serde(rename = "dateModified")]
+    date_modified: String,
+    categories: Option<Vec<String>>,
+    license: Option<String>,
+    #[serde(rename = "classes")]
+    class_ids: Option<Vec<CfNewClassId>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewAuthor {
+    name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewLatestFile {
+    #[serde(rename = "gameVersions")]
+    game_versions: Vec<CfNewGameVersionRef>,
+    #[serde(rename = "fileTypes")]
+    file_types: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewGameVersionRef {
+    #[serde(rename = "gameVersionTypeId")]
+    gv_type_id: u64,
+    #[serde(rename = "gameVersion")]
+    gv_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewClassId {
+    id: u64,
+    name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewFileEnvelope {
+    data: Vec<CfNewFile>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewFile {
+    id: u64,
+    #[serde(rename = "displayName")]
+    display_name: String,
+    #[serde(rename = "fileName")]
+    file_name: String,
+    #[serde(rename = "fileDate")]
+    file_date: String,
+    #[serde(rename = "gameVersions")]
+    game_versions: Vec<CfNewFileGameVersion>,
+    #[serde(rename = "releaseType")]
+    release_type: u64,
+    #[serde(rename = "fileLength")]
+    file_length: u64,
+    #[serde(rename = "downloadUrl")]
+    download_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct CfNewFileGameVersion {
+    #[serde(rename = "gameVersionTypeId")]
+    gv_type_id: u64,
+    #[serde(rename = "gameVersion")]
+    gv_name: String,
+}
+
+fn cuseforge_download_url(file_id: u64, file_name: &str) -> String {
+    let id_st = file_id.to_string();
+    if id_st.len() <= 8 {
+        let padded = format!("{:0>8}", id_st);
+        let (first, last) = padded.split_at(4);
+        return format!("https://edge.forgecdn.net/files/{}/{}/{}", first, last, file_name);
+    }
+    let (first, last) = id_st.split_at(id_st.len() - 4);
+    format!(
+        "https://edge.forgecdn.net/files/{}/{}/{}",
+        &first[..4],
+        last,
+        file_name
+    )
+}
+
+/// Get the CurseForge API key from config, returning empty string if not set.
+fn get_cf_api_key() -> String {
+    CF_API_KEY.to_string()
+}
+
+/// Build the base URL for the new CurseForge API.
+fn cf_api_base() -> String {
+    "https://api.curseforge.com".to_string()
+}
+
+/// Search mods on CurseForge using the new API.
+/// `class_id` is the category filter (0 = all, 6 = mods, 12 = resourcepacks, 6552 = shaderpacks, etc.)
+pub async fn search_cuseforge_with_class(
+    query: &str,
+    game_version: Option<&str>,
+    class_id: u32,
+) -> Result<Vec<CuseForgeMod>, String> {
+    let api_key = get_cf_api_key();
+    let base = cf_api_base();
+
+    let mut url = format!(
+        "{}/v1/mods/search?gameId=432&pageSize=20&sortBy=6&classId={}&searchFilter={}",
+        base, class_id, url_encode(query)
+    );
+    if let Some(gv) = game_version {
+        if !gv.trim().is_empty() {
+            url.push_str(&format!("&gameVersion={}", url_encode(gv)));
+        }
+    }
+
+    let client = crate::mc::mirror::http_client();
+    let mut req = client.get(&url);
+    if !api_key.is_empty() {
+        req = req.header("X-API-Key", api_key);
+    }
+
+    let esp = req.send().await.map_err(|e| format!("CurseForge 连接失败: {}", e))?;
+    if !esp.status().is_success() {
+        let status = esp.status();
+        let body = esp.text().await.unwrap_or_default();
+        if body.contains("401") || body.contains("Unauthorized") {
+            return Err("请先到设置页面填写 CurseForge API Key（免费获取：https://console.curseforge.com/）".into());
+        }
+        return Err(format!("CurseForge 接口返回 {}: {}", status, body.chars().take(200).collect::<String>()));
+    }
+    let body = esp.text().await.map_err(|e| format!("读取 CurseForge 响应失败: {}", e))?;
+    let envelope: CfNewSearchEnvelope = serde_json::from_str(&body)
+        .map_err(|e| format!("CurseForge 响应解析失败: {}（接口可能返回了错误页面，请重试或检查网络）", e))?;
+
+    Ok(envelope.data.results.into_iter().map(cf_new_mod_to_cuseforge_mod).collect())
+}
+
+pub async fn search_cuseforge(query: &str, game_version: Option<&str>, _category: Option<&str>) -> Result<Vec<CuseForgeMod>, String> {
+    search_cuseforge_with_class(query, game_version, 6).await
+}
+
+/// Recommended CurseForge mods — empty query, sorted by downloads.
+pub async fn recommended_cuseforge_mods(limit: u32, game_version: Option<&str>) -> Result<Vec<CuseForgeMod>, String> {
+    let base = cf_api_base();
+    let url = format!(
+        "{}/v1/mods/search?gameId=432&pageSize={}&sortBy=6&classId=6",
+        base, limit
+    );
+    if let Some(gv) = game_version {
+        if !gv.trim().is_empty() {
+            // gameVersion param expects a comma-separated list or single value
+            // For recommendations, we don't filter by game version by default
+        }
+    }
+    let client = crate::mc::mirror::http_client();
+    let mut req = client.get(&url);
+    if !CF_API_KEY.is_empty() {
+        req = req.header("X-API-Key", CF_API_KEY);
+    }
+    let esp = req.send().await.map_err(|e| format!("CurseForge 连接失败: {}", e))?;
+    if !esp.status().is_success() {
+        return Err(format!("CurseForge 接口返回 {}", esp.status()));
+    }
+    let body = esp.text().await.map_err(|e| format!("读取 CurseForge 响应失败: {}", e))?;
+    let envelope: CfNewSearchEnvelope = serde_json::from_str(&body)
+        .map_err(|e| format!("CurseForge 响应解析失败: {}", e))?;
+    Ok(envelope.data.results.into_iter().map(cf_new_mod_to_cuseforge_mod).collect())
+}
+
+/// Convert a new-format mod result to the internal CuseForgeMod type.
+fn cf_new_mod_to_cuseforge_mod(m: CfNewModResult) -> CuseForgeMod {
+    // Extract game versions and loaders from latestFile.gameVersions
+    let mut game_versions: Vec<String> = Vec::new();
+    let mut loaders: Vec<String> = Vec::new();
+    if let Some(ref lf) = m.latest_file {
+        for gv in &lf.game_versions {
+            if gv.gv_type_id == 1 {
+                game_versions.push(gv.gv_name.clone());
+            } else if gv.gv_type_id == 2 {
+                loaders.push(gv.gv_name.clone());
+            }
+        }
+    }
+
+    // Map category IDs to names
+    let category = m.class_ids
+        .as_ref()
+        .and_then(|classes| classes.first())
+        .map(|c| c.name.clone());
+
+    CuseForgeMod {
+        id: m.id,
+        name: m.name,
+        slug: m.slug,
+        summay: m.summary.unwrap_or_default(),
+        downloads: m.download_count.unwrap_or(0),
+        category,
+        logo_ul: m.logo_url,
+        authors: m.authors.into_iter().map(|a| a.name).collect(),
+        game_versions,
+        date_modified: m.date_modified,
+        categories: m.categories.unwrap_or_default(),
+        license: m.license,
+    }
+}
+
+/// Get detailed mod info from CurseForge using the new API.
+pub async fn get_cuseforge_project(mod_id: u64) -> Result<CuseForgeMod, String> {
+    let api_key = get_cf_api_key();
+    let base = cf_api_base();
+    let url = format!("{}/v1/mods/{}", base, mod_id);
+
+    let client = crate::mc::mirror::http_client();
+    let mut req = client.get(&url);
+    if !api_key.is_empty() {
+        req = req.header("X-API-Key", api_key);
+    }
+
+    let esp = req.send().await.map_err(|e| format!("CurseForge 连接失败: {}", e))?;
+    if !esp.status().is_success() {
+        return Err(format!("CurseForge 接口返回 {}", esp.status()));
+    }
+    let body = esp.text().await.map_err(|e| format!("读取 CurseForge 响应失败: {}", e))?;
+    let envelope: CfNewSearchEnvelope = serde_json::from_str(&body)
+        .map_err(|e| format!("CurseForge 响应解析失败: {}", e))?;
+
+    // The API returns a single mod in a list; take the first result
+    let result = envelope
+        .data
+        .results
+        .into_iter()
+        .next()
+        .ok_or_else(|| "CurseForge 未找到该模组".to_string())?;
+
+    Ok(cf_new_mod_to_cuseforge_mod(result))
+}
+
+/// Get file list for a CurseForge mod using the new API.
+pub async fn get_cuseforge_files(mod_id: u64) -> Result<Vec<CuseForgeFile>, String> {
+    let api_key = get_cf_api_key();
+    let base = cf_api_base();
+    let url = format!("{}/v1/mods/{}/files", base, mod_id);
+
+    let client = crate::mc::mirror::http_client();
+    let mut req = client.get(&url);
+    if !api_key.is_empty() {
+        req = req.header("X-API-Key", api_key);
+    }
+
+    let esp = req.send().await.map_err(|e| format!("CurseForge 连接失败: {}", e))?;
+    if !esp.status().is_success() {
+        return Err(format!("CurseForge 接口返回 {}", esp.status()));
+    }
+    let body = esp.text().await.map_err(|e| format!("读取 CurseForge 响应失败: {}", e))?;
+    let envelope: CfNewFileEnvelope = serde_json::from_str(&body)
+        .map_err(|e| format!("CurseForge 响应解析失败: {}", e))?;
+
+    Ok(envelope.data.into_iter().map(|f| {
+        // Split gameVersions by type: 1=game version, 2=loader
+        let mut game_versions: Vec<String> = Vec::new();
+        let mut loaders: Vec<String> = Vec::new();
+        for gv in &f.game_versions {
+            if gv.gv_type_id == 1 {
+                game_versions.push(gv.gv_name.clone());
+            } else if gv.gv_type_id == 2 {
+                loaders.push(gv.gv_name.clone());
+            }
+        }
+        let download_url = f.download_url.unwrap_or_else(|| {
+            // Fallback: construct download URL from file ID
+            cuseforge_download_url(f.id, &f.file_name)
+        });
+        CuseForgeFile {
+            id: f.id,
+            display_name: f.display_name,
+            file_name: f.file_name,
+            file_date: f.file_date,
+            game_versions,
+            loaders,
+            elease_type: Some(f.release_type),
+            file_length: f.file_length,
+            download_url,
+        }
+    }).collect())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -318,237 +640,6 @@ pub async fn get_modrinth_versions(project_id: &str) -> Result<Vec<ModrinthVersi
     esp.json().await.map_err(|e| e.to_string())
 }
 
-#[derive(Deserialize)]
-struct CfSeachResponse {
-    data: Vec<CfModData>,
-}
-
-#[derive(Deserialize)]
-struct CfModData {
-    id: u64,
-    name: String,
-    slug: String,
-    #[serde(rename = "summary")]
-    summay: String,
-    #[serde(rename = "downloadCount")]
-    download_count: u64,
-    logo: Option<CfLogo>,
-    authors: Vec<CfAddonAutho>,
-    latest_files_indexes: Vec<CfFileIndex>,
-    #[serde(rename = "dateModified")]
-    date_modified: String,
-}
-
-#[derive(Deserialize)]
-struct CfLogo {
-    url: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CfAddonAutho {
-    name: String,
-}
-
-#[derive(Deserialize)]
-struct CfFileIndex {
-    #[serde(rename = "gameVersion")]
-    game_version: Option<String>,
-}
-
-fn parse_cuseforge_response(body: &str) -> Result<Vec<CuseForgeMod>, String> {
-    let data: CfSeachResponse = serde_json::from_str(body)
-        .map_err(|e| format!("CurseForge 响应解析失败: {}（接口可能返回了错误页面，请重试或检查网络）", e))?;
-    Ok(data.data.into_iter().map(cf_mod_to_cuseforge_mod).collect())
-}
-
-pub async fn search_cuseforge(query: &str, game_version: Option<&str>, _category: Option<&str>) -> Result<Vec<CuseForgeMod>, String> {
-    search_cuseforge_with_class(query, game_version, 6).await
-}
-
-pub async fn search_cuseforge_with_class(
-    query: &str,
-    game_version: Option<&str>,
-    class_id: u32,
-) -> Result<Vec<CuseForgeMod>, String> {
-    let mut url = format!(
-        "https://api.curse.tools/v1/cf/mods/search?gameId=432&classId={}&searchFilter={}&pageSize=20&sortField=2&sortOrder=desc",
-        class_id,
-        url_encode(query)
-    );
-    if let Some(gv) = game_version {
-        url.push_str(&format!("&gameVersions={}", url_encode(gv)));
-    }
-
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let mut last_er = String::new();
-    for _ in 0..2 {
-        let esp = client.get(&url).send().await;
-        match esp {
-            Ok(r) if r.status().is_success() => {
-                let body = r.text().await.map_err(|e| format!("读取 CurseForge 响应失败: {}", e))?;
-                match parse_cuseforge_response(&body) {
-                    Ok(results) => return Ok(results),
-                    Err(e) => last_er = e,
-                }
-            }
-            Ok(r) => last_er = format!("CurseForge 接口返回 {}", r.status()),
-            Err(e) => last_er = format!("CurseForge 连接失败: {}", e),
-        }
-    }
-    Err(if last_er.is_empty() {
-        "CurseForge 搜索失败,请稍后重试".into()
-    } else {
-        last_er
-    })
-}
-
-pub async fn get_cuseforge_project(mod_id: u64) -> Result<CuseForgeMod, String> {
-    let url = format!("https://api.curse.tools/v1/cf/mods/{}", mod_id);
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    #[derive(Deserialize)]
-    struct Envelope {
-        data: CfModData,
-    }
-
-    let esp = client.get(&url).send().await.map_err(|e| format!("CurseForge 连接失败: {}", e))?;
-    if !esp.status().is_success() {
-        return Err(format!("CurseForge 接口返回 {}", esp.status()));
-    }
-    let body = esp.text().await.map_err(|e| format!("读取 CurseForge 响应失败: {}", e))?;
-    let envelope: Envelope = serde_json::from_str(&body)
-        .map_err(|e| format!("CurseForge 响应解析失败: {}", e))?;
-    Ok(cf_mod_to_cuseforge_mod(envelope.data))
-}
-
-fn cf_mod_to_cuseforge_mod(m: CfModData) -> CuseForgeMod {
-    CuseForgeMod {
-        id: m.id,
-        name: m.name,
-        slug: m.slug,
-        summay: m.summay,
-        downloads: m.download_count,
-        category: None,
-        logo_ul: m.logo.and_then(|l| l.url),
-        authors: m.authors.into_iter().map(|a| a.name).collect(),
-        game_versions: m.latest_files_indexes
-            .into_iter()
-            .filter_map(|f| f.game_version)
-            .collect(),
-        date_modified: m.date_modified,
-    }
-}
-
-fn cuseforge_download_url(file_id: u64, file_name: &str) -> String {
-    let id_st = file_id.to_string();
-    if id_st.len() <= 8 {
-        let padded = format!("{:0>8}", id_st);
-        let (first, last) = padded.split_at(4);
-        return format!("https://edge.forgecdn.net/files/{}/{}/{}", first, last, file_name);
-    }
-    let (first, last) = id_st.split_at(id_st.len() - 4);
-    format!(
-        "https://edge.forgecdn.net/files/{}/{}/{}",
-        &first[..4],
-        last,
-        file_name
-    )
-}
-
-pub async fn get_cuseforge_files(mod_id: u64) -> Result<Vec<CuseForgeFile>, String> {
-    let url = format!("https://api.curse.tools/v1/cf/mods/{}/files?pageSize=50", mod_id);
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    #[derive(Deserialize)]
-    struct CfFile {
-        id: u64,
-        #[serde(rename = "displayName")]
-        display_name: String,
-        #[serde(rename = "fileNameOnDisk")]
-        file_name: String,
-        #[serde(rename = "fileDate")]
-        file_date: String,
-        #[serde(rename = "gameVersions")]
-        game_versions: Vec<String>,
-        #[serde(rename = "gameVersionTypeId")]
-        game_version_type_id: Option<u64>,
-        #[serde(rename = "releaseType", default)]
-        elease_type: Option<u64>,
-        #[serde(rename = "fileLength")]
-        file_length: u64,
-        #[serde(rename = "downloadUrl")]
-        download_url: Option<String>,
-    }
-
-    #[derive(Deserialize)]
-    struct Envelope {
-        data: Vec<CfFile>,
-    }
-
-    let mut last_er = String::new();
-    for _ in 0..2 {
-        let esp = client.get(&url).send().await;
-        match esp {
-            Ok(r) if r.status().is_success() => {
-                let body = r.text().await.map_err(|e| format!("读取 CurseForge 响应失败: {}", e))?;
-                match serde_json::from_str::<Envelope>(&body) {
-                    Ok(envelope) => {
-                        let files = envelope.data.into_iter().map(|f| {
-                            let id = f.id;
-                            let file_name = f.file_name;
-                            let download_url = f.download_url
-                                .unwrap_or_else(|| cuseforge_download_url(id, &file_name));
-                            let game_versions: Vec<String> = f.game_versions.iter()
-                                .zip(std::iter::repeat(f.game_version_type_id))
-                                .filter(|(_, t)| t.unwrap_or(0) == 1)
-                                .map(|(v, _)| v.clone())
-                                .collect();
-                            let loaders: Vec<String> = f.game_versions.iter()
-                                .zip(std::iter::repeat(f.game_version_type_id))
-                                .filter(|(_, t)| t.unwrap_or(0) == 2)
-                                .map(|(v, _)| v.clone())
-                                .collect();
-                            CuseForgeFile {
-                                id,
-                                display_name: f.display_name,
-                                file_name,
-                                file_date: f.file_date,
-                                game_versions,
-                                loaders,
-                                elease_type: f.elease_type,
-                                file_length: f.file_length,
-                                download_url,
-                            }
-                        }).collect();
-                        return Ok(files);
-                    }
-                    Err(e) => last_er = format!("CurseForge 响应解析失败: {}", e),
-                }
-            }
-            Ok(r) => last_er = format!("CurseForge 接口返回 {}", r.status()),
-            Err(e) => last_er = format!("CurseForge 连接失败: {}", e),
-        }
-    }
-    Err(if last_er.is_empty() {
-        "CurseForge 文件列表获取失败,请稍后重试".into()
-    } else {
-        last_er
-    })
-}
-
 pub async fn get_modrinth_project_detail(slug: &str) -> Result<ModrinthProjectDetail, String> {
     let client = reqwest::Client::builder()
         .user_agent("SkyLineLauncher/1.0 (contact: launcher)")
@@ -727,8 +818,8 @@ pub async fn download_file_to(
     on_progress: impl Fn(u64, u64) + Send + Sync + 'static,
     concurrency: usize,
 ) -> Result<String, String> {
-    use std::sync::Arc;
-    use tokio::sync::Semaphore;
+    
+    
 
     let client = crate::mc::mirror::http_client();
 

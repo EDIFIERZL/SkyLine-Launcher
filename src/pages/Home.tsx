@@ -11,7 +11,6 @@ import { gameModeLabel } from '../lib/utils'
 import { triggerBestOptimize, triggerSilentOptimize } from '../hooks/useMemoryOptimizer'
 import { InstancePanel, type InstancePanelHandle } from '../components/InstancePanel'
 import { VersionSettingsPanel } from '../components/VersionSettingsPanel'
-import { DownloadCenter } from '../components/DownloadCenter'
 import { SkinAvatar } from '../components/SkinAvatar'
 import { LaunchButton } from '../components/LaunchButton'
 import { LoaderLogo } from '../components/LoaderLogo'
@@ -887,7 +886,6 @@ export function Home() {
               <InstancePanel ref={panelRef} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); useInstanceStore.getState().setSelectedId(id); invoke('set_last_selected_instance', { instanceId: id }).catch(() => {}) }} onCollapse={() => { setPanelOpen(false); invoke<Instance[]>('list_home_instances').then(setInstances).catch(console.error) }} />
       </Box>
 
-      <DownloadCenter serverCard={!!(config.server_address && !config.hide_server_card)} />
       <VersionSettingsPanel open={vsOpen} onClose={() => setVsOpen(false)} />
       <CrashDialog
         open={!!crashInfo}

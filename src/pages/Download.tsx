@@ -138,6 +138,7 @@ export function Download() {
   const [cfResults, setCfResults] = useState<CurseForgeMod[]>([])
   const [mcmodMap, setMcmodMap] = useState<Record<string, McmodItem>>({})
   const [recs, setRecs] = useState<ModrinthProject[]>([])
+  const [cfRecs, setCfRecs] = useState<CurseForgeMod[]>([])
   const [recsLoading, setRecsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [offset, setOffset] = useState(0)
@@ -409,34 +410,44 @@ export function Download() {
   }, [source, tab, gameVersion, loaderFilter, searchMods])
 
   useEffect(() => {
-    if (tab === 'minecraft' || source !== 'modrinth' || query.trim()) return
+    if (tab === 'minecraft' || query.trim()) return
     const gv = gameVersion || null
     const ldrs = (tab === 'mods' && loaderFilter) ? [loaderFilter] : undefined
-    const cmd =
-      tab === 'mods' ? 'recommended_mods'
-      : tab === 'resourcepacks' ? 'recommended_resource_packs'
-      : tab === 'shaderpacks' ? 'recommended_shader_packs'
-      : tab === 'datapacks' ? 'recommended_datapacks'
-      : tab === 'maps' ? 'recommended_worlds'
-      : 'recommended_modpacks'
-    setRecsLoading(true)
-    invoke<ModrinthProject[]>(cmd, { limit: 12, gameVersion: gv, loaders: ldrs })
-      .then((res) => {
-        setRecs(res)
-        if (tab === 'mods') {
-          const titles = res.slice(0, 8).map((m) => m.title)
-          return invoke<McmodItem[]>('enrich_mcmod_batch', { titles }).then((enriched) => {
-            const map: Record<string, McmodItem> = {}
-            enriched.forEach((item, i) => {
-              const project = res[i]
-              if (project) map[project.slug] = item
+    if (source === 'modrinth') {
+      const cmd =
+        tab === 'mods' ? 'recommended_mods'
+        : tab === 'resourcepacks' ? 'recommended_resource_packs'
+        : tab === 'shaderpacks' ? 'recommended_shader_packs'
+        : 'recommended_modpacks'
+      setRecsLoading(true)
+      invoke<ModrinthProject[]>(cmd, { limit: 12, gameVersion: gv, loaders: ldrs })
+        .then((res) => {
+          setRecs(res)
+          if (tab === 'mods') {
+            const titles = res.slice(0, 8).map((m) => m.title)
+            return invoke<McmodItem[]>('enrich_mcmod_batch', { titles }).then((enriched) => {
+              const map: Record<string, McmodItem> = {}
+              enriched.forEach((item, i) => {
+                const project = res[i]
+                if (project) map[project.slug] = item
+              })
+              setMcmodMap(map)
             })
-            setMcmodMap(map)
-          })
-        }
+          }
+        })
+        .catch(() => {})
+        .finally(() => setRecsLoading(false))
+    } else {
+      // CurseForge recommendations: search with empty query, sorted by downloads
+      setRecsLoading(true)
+      invoke<CurseForgeMod[]>('recommended_curseforge_mods', {
+        limit: 12,
+        gameVersion: gv || undefined,
       })
-      .catch(() => {})
-      .finally(() => setRecsLoading(false))
+        .then((res) => { setCfRecs(res) })
+        .catch(() => {})
+        .finally(() => setRecsLoading(false))
+    }
   }, [tab, source, query, gameVersion, loaderFilter])
 
   const selectProject = (project: ModrinthProject) => {
@@ -751,7 +762,7 @@ export function Download() {
           <Button type="submit" loading={loading} startIcon={<Search className="w-4 h-4" />}>搜索</Button>
         </form>
         {error && <AlertBox severity="error" onClose={() => setError(null)}>{error}</AlertBox>}
-        {!query.trim() && source === 'modrinth' ? (
+        {!query.trim() ? (
           <>
             <Box className="flex items-center justify-between">
               <Typography variant="subtitle2">{recTitle}</Typography>
@@ -759,7 +770,7 @@ export function Download() {
             </Box>
             {recsLoading ? (
               <Loading />
-            ) : recs.length > 0 ? (
+            ) : source === 'modrinth' && recs.length > 0 ? (
               <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {recs.map((mod) => {
                   const cn = mcmodMap[mod.slug]
@@ -788,8 +799,29 @@ export function Download() {
                   )
                 })}
               </Box>
+            ) : source === 'curseforge' && cfRecs.length > 0 ? (
+              <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {cfRecs.map((mod) => (
+                  <Card key={mod.id} onClick={() => selectCf(mod)} hoverable>
+                    <Box className="flex gap-3">
+                      {mod.logo_url && <img src={mod.logo_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
+                      <Box className="min-w-0 flex-1">
+                        <Typography variant="subtitle2" className="truncate">{mod.name}</Typography>
+                        {mod.authors.length > 0 && <Typography variant="caption" color="text.secondary">{mod.authors.join(', ')}</Typography>}
+                        <Typography variant="body2" color="text.secondary" className="mt-1 line-clamp-2">{mod.summary}</Typography>
+                        <Box className="flex items-center gap-2 mt-2">
+                          <Typography variant="caption" color="text.secondary">{formatDownloads(mod.downloads)} 下载</Typography>
+                          {mod.game_versions.slice(0, 2).map((gv) => (
+                            <Chip key={gv} label={gv} size="small" variant="outlined" />
+                          ))}
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Card>
+                ))}
+              </Box>
             ) : (
-              <EmptyState icon={<PackageOpen className="w-12 h-12" />} title="暂无推荐" />
+              <EmptyState icon={<PackageOpen className="w-12 h-12" />} title={source === 'curseforge' ? '请先在设置中填写 CurseForge API Key' : '暂无推荐'} />
             )}
           </>
         ) : loading ? (

@@ -1,4 +1,6 @@
-﻿mod mc;
+﻿#![allow(dead_code)]
+
+mod mc;
 mod instance;
 mod download;
 mod modpack;
@@ -198,6 +200,11 @@ commands::auth::littleskin_auth_refresh,
             commands::crash_ai::save_agnes_api_key,
             commands::crash_ai::get_agnes_api_key_status,
             commands::crash_ai::analyze_crash_auto,
+            commands::crash_ai::ai_chat_v2,
+            commands::crash_ai::get_ai_providers,
+            commands::crash_ai::get_ai_provider_config,
+            commands::crash_ai::save_ai_provider_config,
+            commands::crash_ai::get_ai_config_status,
             commands::music::read_audio_file,
             commands::music::check_files_exist,
             commands::settings::load_config,
@@ -255,6 +262,7 @@ commands::auth::littleskin_auth_refresh,
             commands::modpack::install_curseforge_modpack,
             commands::modpack::search_curseforge_mods,
             commands::modpack::search_curseforge_category,
+            commands::modpack::recommended_curseforge_mods,
             commands::modpack::get_curseforge_project,
             commands::modpack::get_curseforge_files,
             commands::modpack::export_modrinth_pack,
@@ -296,6 +304,8 @@ commands::auth::littleskin_auth_refresh,
             commands::memory::get_memory_usage,
             commands::memory::start_periodic_optimization,
             commands::memory::stop_periodic_optimization,
+            commands::tts::tts_speak,
+            commands::news::fetch_mc_news,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SkyLine Launcher");

@@ -44,6 +44,7 @@ pub struct TexturesInfo {
     pub textures: TexturesData,
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TexturesData {
     #[serde(default)]
@@ -76,7 +77,7 @@ pub fn is_authlib_jar_downloaded() -> bool {
 
 
 
-pub fn ensure_authlib_jar() -> Result<PathBuf, String> {
+pub async fn ensure_authlib_jar() -> Result<PathBuf, String> {
     let jar_path = get_authlib_jar_path();
     if jar_path.exists() {
         return Ok(jar_path);
@@ -93,7 +94,7 @@ pub fn ensure_authlib_jar() -> Result<PathBuf, String> {
         return Ok(jar_path);
     }
 
-    Err("authlib-injector.jar 未找到，请确保文件存在于启动器目录".to_string())
+    download_authlib_jar().await
 }
 
 pub async fn download_authlib_jar() -> Result<PathBuf, String> {

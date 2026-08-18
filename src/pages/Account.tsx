@@ -239,6 +239,11 @@ export function Account() {
       navigator.clipboard.writeText(code.user_code).catch(() => {})
       setLsPolling(true)
       startLsPolling(code)
+
+      const verifyUrl = code.verification_uri_complete ?? (code.verification_uri ? `${code.verification_uri}?code=${code.user_code}` : null)
+      if (verifyUrl) {
+        open(verifyUrl).catch(() => {})
+      }
     } catch (e) {
       console.error(e)
       const msg = String(e)
@@ -316,6 +321,9 @@ export function Account() {
   const handleDeleteAccount = (account: SavedAccount) => {
     if (!confirm(`确定删除账户 ${account.username} 吗？`)) return
     removeAccount(account.id)
+    if (session && (session.uuid === account.id || (account.id === account.username && session.username === account.username))) {
+      clearSession()
+    }
   }
 
   const accountTypeLabel = (t: string) =>
@@ -384,7 +392,7 @@ export function Account() {
               <Box className="flex items-center gap-4">
                 <SkinAvatar size={64} />
                 <Box>
-                  <Typography variant="h6">{session.username}</Typography>
+                   <Typography variant="h6" className="font-bold tracking-wide">{session.username?.trim() || `玩家-${session.uuid.slice(0, 6)}`}</Typography>
                   <Box className="flex items-center gap-2 mt-1">
                     <Chip label={accountTypeLabel(session.user_type)} size="small" variant="outlined" />
                   </Box>

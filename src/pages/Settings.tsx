@@ -40,7 +40,6 @@ const gradientPresets = [
 
 const SETTINGS_TABS = [
   { value: 'appearance', label: '外观', icon: <Palette className="w-4 h-4" /> },
-  { value: 'preferences', label: '偏好设置', icon: <Sparkles className="w-4 h-4" /> },
   { value: 'game', label: '游戏设置', icon: <Gamepad2 className="w-4 h-4" /> },
   { value: 'launcher', label: '启动器', icon: <Monitor className="w-4 h-4" /> },
   { value: 'about', label: '关于', icon: <Info className="w-4 h-4" /> },
@@ -48,10 +47,10 @@ const SETTINGS_TABS = [
 
 const CREDIT_LIST = [
   { name: 'LiChenghao', avatar: '/LiChenghao.jpg', url: 'https://github.com/chenghaolee-2012', contribution: '参与启动器UI开发，成功摆脱了原先的屎山UI' },
-  { name: 'ESexplorerZDC', avatar: '/ESexplorerZDC.png', url: 'https://github.com/ExplorerMediaGroup', contribution: '为启动器提供部分前端设计' },
+  { name: 'ESexplorerZDC', avatar: '/ESexplorerZDC.png', url: 'https://github.com/ExplorerMediaGroup', contribution: '为启动器提出亿些肥肠好的功能与建议' },
   { name: 'Yukino_fox', avatar: '/Yukino_fox.jpg', url: 'https://github.com/Yukino-fox', contribution: '为启动器绘制了SVG图标，具有天生美术体质  ' },
-  { name: 'ZhouZhouo_O', avatar: '/ZhouZhouo_O.jpg', url: 'https://github.com/ZhouZhou-oO', contribution: '为启动器提供部分前端设计' },
-  { name: 'Soloev', avatar: '/Soloev.png', url: 'https://github.com/0xarch', contribution: '为启动器提供部分前端设计' },
+  { name: 'ZhouZhouo_O', avatar: '/ZhouZhouo_O.jpg', url: 'https://github.com/ZhouZhou-oO', contribution: '为启动器提供部分前端设计，代理Timemuim服务器，让UP写启动器时可以去服务器摸鱼' },
+  { name: 'Soloev', avatar: '/Soloev.png', url: 'https://github.com/0xarch', contribution: '为启动器提出肥肠好的改进建议并提供了部分前端设计' },
   { name: 'MC百科', avatar: '', url: 'https://www.mcmod.cn/', contribution: '提供模组资料与百科数据支持' },
 ]
 
@@ -233,8 +232,8 @@ export function Settings() {
               </Typography>
               <Box className="flex gap-2">
                 {[
-                  { value: 'light', label: '浅色（beta）', icon: <Sun className="w-5 h-5" /> },
                   { value: 'dark', label: '深色', icon: <Moon className="w-5 h-5" /> },
+                  { value: 'light', label: '浅色（beta）', icon: <Sun className="w-5 h-5" /> },
                   { value: 'system', label: '跟随系统', icon: <Monitor className="w-5 h-5" /> },
                 ].map((opt) => (
                   <div key={opt.value} className="flex-1">
@@ -325,7 +324,7 @@ export function Settings() {
               {localConfig.background_type === 'gradient' && (
                 <Box className="space-y-3">
                   <Typography variant="caption" color="text.secondary">
-                    选择预设渐变背景（点击应用）
+                    选择预设渐变背景（点击以应用）
                   </Typography>
                   <Box className="grid grid-cols-5 gap-2">
                     {gradientPresets.map((g) => (
@@ -411,7 +410,7 @@ export function Settings() {
                       )}
                       <Box className="absolute inset-0 flex items-end p-2 bg-gradient-to-t from-black/40 to-transparent">
                         <Typography variant="caption" color="#fff">
-                          {localConfig.background_type === 'video' ? '背景视频预览（循环播放）' : '启动器背景预览'}
+                          {localConfig.background_type === 'video' ? '背景视频预览' : '启动器背景预览'}
                         </Typography>
                       </Box>
                     </Box>
@@ -444,8 +443,8 @@ export function Settings() {
                   </Typography>
                   <Box className="flex gap-2">
                     {[
-                      { value: 'normal', label: '(高性能)液态玻璃', desc: '内置渐变光晕背景' },
-                      { value: 'transparent', label: '透明液态玻璃', desc: '背景透明，可看到桌面' },
+                      { value: 'normal', label: '液态玻璃', desc: '内置渐变光晕背景' },
+                      { value: 'transparent', label: '透明液态玻璃', desc: '启动器界面为透明' },
                     ].map((opt) => (
                       <div key={opt.value} className="flex-1" title={opt.desc}>
                         <Button
@@ -468,7 +467,7 @@ export function Settings() {
                     <Box className="flex items-start gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                       <AlertCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                       <Typography variant="caption" color="text.secondary">
-                        高性能模式下可搭配图片或视频背景使用。
+                        液态玻璃模式下可搭配图片或视频背景使用。
                         使用图片/视频背景时，首页右下角可开启全屏沉浸模式隐藏所有界面组件。低配设备慎用。
                       </Typography>
                     </Box>
@@ -477,94 +476,13 @@ export function Settings() {
                     <Box className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                       <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                       <Typography variant="caption" color="text.secondary">
-                        透明模式下，未设置背景图片/视频时背景将变为透明，可直接看到桌面。
+                        透明液态玻璃模式下，启动器界面将变为透明。
                         此模式不支持图片及视频背景，低配设备慎用。
                       </Typography>
                     </Box>
                   )}
                 </Box>
               )}
-            </Box>
-          </Card>
-        </Box>
-      )}
-
-      {activeTab === 'preferences' && (
-        <Box className="space-y-5">
-          <Card>
-            <Box className="space-y-4">
-              <Typography variant="subtitle1" className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[var(--accent-color)]" /> 首页风格
-              </Typography>
-              <Box className="flex gap-2">
-                {[
-                  { value: 'full', label: '完整模式', desc: '显示实例详情、模组、截图等' },
-                  { value: 'minimal', label: '简洁模式', desc: '干净清爽，聚焦启动' },
-                ].map((opt) => (
-                  <div key={opt.value} className="flex-1">
-                    <Button
-                      variant={localConfig.home_style === opt.value ? 'contained' : 'outlined'}
-                      onClick={() => handleChange('home_style' as keyof LauncherConfig, opt.value)}
-                      fullWidth
-                      className="!flex-col !py-3 !h-auto"
-                    >
-                      <span className="text-sm font-semibold">{opt.label}</span>
-                      <span className="text-[10px] opacity-70 mt-0.5">{opt.desc}</span>
-                    </Button>
-                  </div>
-                ))}
-              </Box>
-            </Box>
-          </Card>
-
-          <Card>
-            <Box className="space-y-4">
-              <Typography variant="subtitle1" className="flex items-center gap-2">
-                <Palette className="w-4 h-4 text-[var(--accent-color)]" /> 强调色
-              </Typography>
-              <Box className="flex flex-wrap gap-2.5">
-                {accentPresets.map((preset) => (
-                  <button
-                    key={preset.color}
-                    onClick={() => handleChange('accent_color', preset.color)}
-                    className={`w-9 h-9 rounded-xl transition-all duration-150 cursor-pointer relative ${
-                      localConfig.accent_color === preset.color
-                        ? 'ring-2 ring-offset-2 ring-accent-500 scale-110'
-                        : 'hover:scale-105'
-                    }`}
-                    style={{ backgroundColor: preset.color }}
-                    title={preset.name}
-                  >
-                    {localConfig.accent_color === preset.color && (
-                      <svg className="absolute inset-0 w-full h-full p-2 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-                <div className="relative w-9 h-9">
-                  <input
-                    type="color"
-                    value={localConfig.accent_color}
-                    onChange={(e) => handleChange('accent_color', e.target.value)}
-                    className="absolute inset-0 w-full h-full rounded-xl border border-surface-300 cursor-pointer opacity-0"
-                  />
-                  <div className="w-full h-full rounded-xl bg-surface-100 border border-surface-300 flex items-center justify-center text-xs text-surface-500 font-medium">
-                    +
-                  </div>
-                </div>
-              </Box>
-            </Box>
-          </Card>
-
-          <Card>
-            <Box className="space-y-4">
-              <Typography variant="subtitle1" className="flex items-center gap-2">
-                <Image className="w-4 h-4 text-[var(--accent-color)]" /> 背景
-              </Typography>
-              <Typography variant="body2" color="text.secondary" className="text-xs">
-                在「外观」标签页中可配置背景图片、视频或渐变色
-              </Typography>
             </Box>
           </Card>
         </Box>
@@ -902,6 +820,16 @@ export function Settings() {
                   隐藏首页侧边栏的多人游戏服务器快速进入列表
                 </Typography>
               </Box>
+              <Box className="border-t border-surface-200 dark:border-surface-700 pt-3 mt-1">
+                <Switch
+                  checked={localConfig.show_home_news !== false}
+                  onChange={(v) => handleChange('show_home_news', v)}
+                  label="简洁模式首页显示 Minecraft 资讯"
+                />
+                <Typography variant="caption" color="text.secondary" className="mt-1 block">
+                  在简洁模式首页右侧显示 Minecraft 官方资讯轮播
+                </Typography>
+              </Box>
             </Box>
           </Box>
         </Card>
@@ -913,7 +841,7 @@ export function Settings() {
             <Box className="flex items-start gap-4">
               <Box className="flex flex-col items-center gap-1.5 shrink-0">
                 <img src="/logo.png" alt="SkyLine" className="w-16 h-16 rounded-2xl object-contain" />
-                <Typography variant="caption" color="text.secondary" className="text-[11px]">v1.0.0</Typography>
+                <Typography variant="caption" color="text.secondary" className="text-[11px]">v1.1.2 beta</Typography>
               </Box>
               <Box className="flex-1 min-w-0">
                 <Typography variant="h6" className="font-bold">SkyLine Launcher</Typography>

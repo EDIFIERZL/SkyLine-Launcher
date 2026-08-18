@@ -204,6 +204,7 @@ pub async fn mojang_auth(email: &str, password: &str) -> Result<AuthSession, Str
         return Err(format!("Auth failed: {}", esp.status()));
     }
 
+    #[allow(non_snake_case)]
     #[derive(Deserialize)]
     struct MojangResponse {
         accessToken: String,
@@ -563,6 +564,7 @@ async fn littleskin_exchange_mc_token(
     oauth_access_token: &str,
     uuid: &str,
 ) -> Result<(String, String, String), String> {
+    #[allow(non_snake_case)]
     #[derive(Deserialize)]
     struct McTokenResp {
         accessToken: String,
@@ -654,7 +656,7 @@ pub async fn littleskin_auth_poll(info: LittleSkinDeviceCode) -> Result<AuthSess
         .as_str()
         .ok_or("ID 令牌缺少 selectedProfile，请确认白名单包含 Yggdrasil.PlayerProfiles.Select 权限")?
         .to_string();
-    let name = selected["name"]
+    let _name = selected["name"]
         .as_str()
         .unwrap_or("Player")
         .to_string();
@@ -818,6 +820,7 @@ pub async fn nide_auth(
         return Err(format!("Nide 认证失败 ({}): {}", status, text));
     }
     
+    #[allow(non_snake_case)]
     #[derive(Deserialize)]
     struct NideAuthResponse {
         accessToken: String,
@@ -873,6 +876,7 @@ pub async fn nide_efesh(
         return Err("Nide 刷新失败".to_string());
     }
     
+    #[allow(non_snake_case)]
     #[derive(Deserialize)]
     struct NideRefeshResponse {
         accessToken: String,

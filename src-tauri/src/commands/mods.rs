@@ -464,12 +464,12 @@ pub async fn get_mod_details(path: String) -> Result<mods::ModInfo, String> {
         return Err("Mod file not found".to_string());
     }
 
-    let file_name = path_buf.file_name()
+    let _file_name = path_buf.file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("")
         .to_string();
-    let enabled = path_buf.extension().and_then(|e| e.to_str()) != Some("disabled");
-    let size_kb = std::fs::metadata(&path_buf).map(|m| m.len() / 1024).unwrap_or(0);
+    let _enabled = path_buf.extension().and_then(|e| e.to_str()) != Some("disabled");
+    let _size_kb = std::fs::metadata(&path_buf).map(|m| m.len() / 1024).unwrap_or(0);
 
     let mods_di = path_buf.parent()
         .and_then(|p| p.parent())

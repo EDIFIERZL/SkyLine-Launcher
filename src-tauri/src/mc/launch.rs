@@ -390,9 +390,15 @@ pub async fn prepare_game_files(config: &LaunchConfig) -> Result<PreparedFiles, 
                 if let Ok(config_st) = std::fs::read_to_string(authlib_config_path) {
                     if let Ok(cfg) = serde_json::from_str::<serde_json::Value>(&config_st) {
                         if let Some(server_ul) = cfg["server_url"].as_str() {
-                            let _ = crate::mc::authlib::ensure_authlib_jar();
-                            let pefetched = cfg["prefetched_meta"].as_str();
-                            ags = crate::mc::authlib::get_authlib_jvm_args(server_ul, pefetched);
+                            match crate::mc::authlib::ensure_authlib_jar().await {
+                                Ok(_) => {
+                                    let pefetched = cfg["prefetched_meta"].as_str();
+                                    ags = crate::mc::authlib::get_authlib_jvm_args(server_ul, pefetched);
+                                }
+                                Err(e) => {
+                                    log::warn!("[launch] authlib-injector 准备失败: {}", e);
+                                }
+                            }
                             found = true;
                         }
                     }
@@ -479,8 +485,8 @@ fn inject_log4j_config(config: &LaunchConfig, game_di: &PathBuf) -> Result<(), S
         }
     }
 
-    let mut found_config = false;
-    for lib_path in &config.jvm_args {
+    let found_config = false;
+    for _lib_path in &config.jvm_args {
     }
 
     if !found_config {
@@ -554,7 +560,7 @@ fn update_launcher_profiles(config: &LaunchConfig, game_di: &PathBuf) -> Result<
 
 #[cfg(target_os = "windows")]
 fn set_gpu_pefeence(config: &LaunchConfig) -> Result<(), String> {
-    let java_path = &config.java.path;
+    let _java_path = &config.java.path;
 
     let game_di = get_game_di(config);
     let pefs_path = game_di.join("launcher_preferences.json");

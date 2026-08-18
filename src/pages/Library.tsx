@@ -85,13 +85,25 @@ export function Library() {
         invoke<string[]>('list_instance_folders').catch(() => [] as string[]),
         invoke<string | null>('get_active_instance_folder').catch(() => null),
       ])
-      setFolders(folderList)
-      useInstanceStore.getState().setFolders(folderList)
-      if (!active && folderList.length === 1) {
+      let finalFolders = folderList
+      if (folderList.length === 0) {
         try {
-          await invoke<string | null>('set_active_instance_folder', { folder: folderList[0] })
-          setActiveFolder(folderList[0])
-          useInstanceStore.getState().setActiveFolder(folderList[0])
+          const scanned = await invoke<string[]>('auto_scan_instance_folders').catch(() => [] as string[])
+          if (scanned.length > 0) {
+            for (const f of scanned.slice(0, 1)) {
+              await invoke('add_instance_folder', { folder: f }).catch(() => {})
+            }
+            finalFolders = await invoke<string[]>('list_instance_folders').catch(() => scanned)
+          }
+        } catch {}
+      }
+      setFolders(finalFolders)
+      useInstanceStore.getState().setFolders(finalFolders)
+      if (!active && finalFolders.length === 1) {
+        try {
+          await invoke<string | null>('set_active_instance_folder', { folder: finalFolders[0] })
+          setActiveFolder(finalFolders[0])
+          useInstanceStore.getState().setActiveFolder(finalFolders[0])
         } catch { setActiveFolder(null) }
       } else {
         setActiveFolder(active ?? null)
@@ -131,12 +143,19 @@ export function Library() {
     setRefreshing(true)
     if (!quiet) setLoading(true)
     try {
-      const list = await invoke<Instance[]>('list_instances')
+      const list = await Promise.race([
+        invoke<Instance[]>('list_instances'),
+        new Promise<Instance[]>((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
+      ])
       setInstances(list)
       useInstanceStore.getState().setLoaded(true)
       await scanMissingDetails(list)
     } catch (e) {
-      setSnack({ open: true, message: `加载实例失败: ${e}`, severity: 'error' })
+      if (String(e) === 'Error: timeout') {
+        setSnack({ open: true, message: '加载超时，请检查实例文件夹路径是否有效', severity: 'error' })
+      } else {
+        setSnack({ open: true, message: `加载实例失败: ${e}`, severity: 'error' })
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -211,15 +230,18 @@ export function Library() {
   }
 
   useEffect(() => {
-    loadFolders()
     const st = useInstanceStore.getState()
-    
     if (st.loaded && st.instances.length > 0) {
       setDetails(st.details)
       void scanMissingDetails(st.instances)
-    } else {
-      load()
     }
+
+    const init = async () => {
+      await loadFolders()
+      await load()
+    }
+
+    init()
     let unsubInstall: (() => void) | null = null
     watchResourceInstall(() => {
       invalidateCatalog()
@@ -244,7 +266,7 @@ export function Library() {
           size="small"
           variant="outlined"
           startIcon={<RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />}
-          onClick={() => { load(true); loadFolders() }}
+          onClick={async () => { await loadFolders(); await load(true) }}
           disabled={refreshing}
         >
           刷新

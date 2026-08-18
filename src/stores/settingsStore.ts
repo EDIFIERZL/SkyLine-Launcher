@@ -41,6 +41,7 @@ const defaultConfig: LauncherConfig = {
   jvm_args: [],
   opengl_compat: false,
   home_style: 'full',
+  show_home_news: true,
   onboarding_completed: false,
 }
 

@@ -105,7 +105,7 @@ struct FabricMainClass {
     client: String,
 }
 
-pub async fn install_fabric(instance_dir: &PathBuf, mc_version: &str, loader_version: &str, use_mirror: bool) -> Result<String, String> {
+pub async fn install_fabric(_instance_dir: &PathBuf, mc_version: &str, loader_version: &str, use_mirror: bool) -> Result<String, String> {
     let client = crate::mc::mirror::http_client();
     let source = if use_mirror {
         crate::mc::mirror::DownloadSource::Auto
@@ -196,7 +196,7 @@ pub async fn list_neoforge_versions(mc_version: &str, use_mirror: bool) -> Resul
     Ok(versions)
 }
 
-pub async fn install_neoforge(instance_dir: &PathBuf, mc_version: &str, neoforge_version: &str, use_mirror: bool) -> Result<(), String> {
+pub async fn install_neoforge(instance_dir: &PathBuf, _mc_version: &str, neoforge_version: &str, use_mirror: bool) -> Result<(), String> {
     let url = format!(
         "https://maven.neoforged.net/releases/net/neoforged/neoforge/{}/neoforge-{}-installer.jar",
         neoforge_version, neoforge_version

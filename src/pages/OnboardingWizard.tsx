@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingsStore } from '../stores/settingsStore'
-import { Box, Typography, Button } from '@/components/material'
-import { Sun, Moon, LayoutDashboard, LayoutList, CheckCircle, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Typography } from '@/components/material'
+import { Sun, Moon, LayoutDashboard, LayoutList, CheckCircle, ChevronRight, ChevronLeft, Image as ImageIcon, Film } from 'lucide-react'
 import type { LauncherConfig } from '../types'
 
 const accentPresets = [
@@ -31,19 +32,22 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     theme_mode: config.theme_mode || 'dark',
     accent_color: config.accent_color || '#3b82f6',
     home_style: config.home_style || 'full',
+    background_type: config.background_type || 'none',
+    background_value: config.background_value || '',
   })
 
   const update = (patch: Partial<LauncherConfig>) => {
     setLocalConfig(prev => ({ ...prev, ...patch }))
   }
 
+  useEffect(() => {
+    const isDark = localConfig.theme_mode === 'dark'
+      || (localConfig.theme_mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [localConfig.theme_mode])
+
   const applyTheme = (mode: string) => {
     update({ theme_mode: mode })
-    if (mode === 'system') {
-      document.documentElement.removeAttribute('data-theme')
-    } else {
-      document.documentElement.setAttribute('data-theme', mode)
-    }
   }
 
   const applyAccent = (color: string) => {
@@ -51,14 +55,30 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     document.documentElement.style.setProperty('--accent-color', color)
   }
 
+  const handlePickBackground = async (type: 'image' | 'video') => {
+    try {
+      const files = await open({
+        multiple: false,
+        filters: type === 'image'
+          ? [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }]
+          : [{ name: '视频', extensions: ['mp4', 'webm'] }],
+      })
+      if (!files) return
+      const filePath = typeof files === 'string' ? files : files[0]
+      update({ background_type: type, background_value: filePath })
+    } catch (e) {
+      console.error('Failed to pick background:', e)
+    }
+  }
+
   const complete = async () => {
-    const final: LauncherConfig = {
+    const finalCfg: LauncherConfig = {
       ...config,
       ...localConfig,
       onboarding_completed: true,
     }
-    setConfig(final)
-    await invoke('save_config', { config: final })
+    setConfig(finalCfg)
+    await invoke('save_config', { config: finalCfg })
     onComplete()
   }
 
@@ -67,12 +87,12 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       title: '选择主题',
       desc: '选择你喜欢的明暗风格',
       content: (
-        <Box className="flex gap-4 justify-center mt-6">
+        <div className="flex gap-4 justify-center mt-6">
           {[
-            { value: 'light', label: '浅色（beta）', icon: <Sun className="w-8 h-8" /> },
             { value: 'dark', label: '深色', icon: <Moon className="w-8 h-8" /> },
+            { value: 'light', label: '浅色（beta）', icon: <Sun className="w-8 h-8" /> },
           ].map((opt) => (
-            <Box
+            <div
               key={opt.value}
               onClick={() => applyTheme(opt.value)}
               className={`flex flex-col items-center gap-3 p-6 rounded-2xl cursor-pointer transition-all duration-200 border-2 ${
@@ -82,20 +102,20 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               }`}
               style={{ minWidth: 140 }}
             >
-              <Box className={`p-3 rounded-xl ${localConfig.theme_mode === opt.value ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)]' : 'bg-surface-100 dark:bg-surface-800 text-surface-400'}`}>
+              <div className={`p-3 rounded-xl ${localConfig.theme_mode === opt.value ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)]' : 'bg-surface-100 dark:bg-surface-800 text-surface-400'}`}>
                 {opt.icon}
-              </Box>
+              </div>
               <Typography variant="subtitle1" className="font-semibold">{opt.label}</Typography>
-            </Box>
+            </div>
           ))}
-        </Box>
+        </div>
       ),
     },
     {
       title: '选择强调色',
       desc: '选择启动器的主题色',
       content: (
-        <Box className="flex flex-wrap gap-3 justify-center mt-6 max-w-md mx-auto">
+        <div className="flex flex-wrap gap-3 justify-center mt-6 max-w-md mx-auto">
           {accentPresets.map((preset) => (
             <button
               key={preset.color}
@@ -105,9 +125,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                   ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-surface-900 scale-110'
                   : 'hover:scale-105'
               }`}
-              style={{
-                backgroundColor: preset.color,
-              }}
+              style={{ backgroundColor: preset.color }}
               title={preset.name}
             >
               {localConfig.accent_color === preset.color && (
@@ -128,33 +146,70 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               +
             </div>
           </div>
-        </Box>
+        </div>
       ),
     },
     {
       title: '背景设置',
-      desc: '你可以在设置中随时更改背景图片或视频',
+      desc: '选择启动器背景图片',
       content: (
-        <Box className="flex flex-col items-center justify-center mt-8 gap-4">
-          <Box className="w-48 h-32 rounded-2xl bg-surface-100 dark:bg-surface-800 border-2 border-dashed border-surface-300 dark:border-surface-600 flex items-center justify-center">
-            <Typography variant="body2" color="text.secondary" className="text-sm">在设置中配置</Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary" className="text-center max-w-xs">
-            你可以在「设置 → 外观」中选择背景图片、视频或渐变色，随时个性化你的启动器
-          </Typography>
-        </Box>
+        <div className="flex flex-col items-center gap-4 mt-6 w-full">
+          <div className="flex gap-3">
+            <button
+              onClick={() => handlePickBackground('image')}
+              className="flex flex-col items-center gap-2 px-5 py-4 rounded-2xl border-2 border-dashed transition-all hover:scale-105 active:scale-95"
+              style={{
+                borderColor: localConfig.background_type === 'image' ? localConfig.accent_color : undefined,
+                backgroundColor: localConfig.background_type === 'image' ? `${localConfig.accent_color}15` : undefined,
+                minWidth: 120,
+              }}
+            >
+              <ImageIcon className="w-6 h-6" style={{ color: localConfig.background_type === 'image' ? localConfig.accent_color : undefined }} />
+              <span className="text-xs font-medium" style={{ color: localConfig.background_type === 'image' ? localConfig.accent_color : undefined }}>照片</span>
+            </button>
+            <button
+              onClick={() => handlePickBackground('video')}
+              className="flex flex-col items-center gap-2 px-5 py-4 rounded-2xl border-2 border-dashed transition-all hover:scale-105 active:scale-95"
+              style={{
+                borderColor: localConfig.background_type === 'video' ? localConfig.accent_color : undefined,
+                backgroundColor: localConfig.background_type === 'video' ? `${localConfig.accent_color}15` : undefined,
+                minWidth: 120,
+              }}
+            >
+              <Film className="w-6 h-6" style={{ color: localConfig.background_type === 'video' ? localConfig.accent_color : undefined }} />
+              <span className="text-xs font-medium" style={{ color: localConfig.background_type === 'video' ? localConfig.accent_color : undefined }}>视频</span>
+            </button>
+          </div>
+          {localConfig.background_value && (
+            <div className="relative w-48 h-28 rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700">
+              {localConfig.background_type === 'video' ? (
+                <video src={localConfig.background_value} className="w-full h-full object-cover" muted loop playsInline />
+              ) : (
+                <img src={localConfig.background_value} alt="背景预览" className="w-full h-full object-cover" />
+              )}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer" onClick={() => update({ background_type: 'none', background_value: '' })}>
+                <span className="text-white text-xs font-medium">移除</span>
+              </div>
+            </div>
+          )}
+          {!localConfig.background_value && (
+            <Typography variant="body2" color="text.secondary" className="text-xs text-center">
+              点击上方按钮选择图片或视频
+            </Typography>
+          )}
+        </div>
       ),
     },
     {
       title: '首页风格',
       desc: '选择你喜欢的首页布局',
       content: (
-        <Box className="flex gap-4 justify-center mt-6">
+        <div className="flex gap-4 justify-center mt-6">
           {[
             { value: 'full', label: '完整模式', desc: '显示实例详情、模组、截图等', icon: <LayoutList className="w-8 h-8" /> },
             { value: 'minimal', label: '简洁模式', desc: '干净清爽，聚焦启动', icon: <LayoutDashboard className="w-8 h-8" /> },
           ].map((opt) => (
-            <Box
+            <div
               key={opt.value}
               onClick={() => update({ home_style: opt.value })}
               className={`flex flex-col items-center gap-3 p-6 rounded-2xl cursor-pointer transition-all duration-200 border-2 ${
@@ -164,14 +219,14 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               }`}
               style={{ minWidth: 160 }}
             >
-              <Box className={`p-3 rounded-xl ${localConfig.home_style === opt.value ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)]' : 'bg-surface-100 dark:bg-surface-800 text-surface-400'}`}>
+              <div className={`p-3 rounded-xl ${localConfig.home_style === opt.value ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)]' : 'bg-surface-100 dark:bg-surface-800 text-surface-400'}`}>
                 {opt.icon}
-              </Box>
+              </div>
               <Typography variant="subtitle1" className="font-semibold">{opt.label}</Typography>
               <Typography variant="caption" color="text.secondary" className="text-center text-xs">{opt.desc}</Typography>
-            </Box>
+            </div>
           ))}
-        </Box>
+        </div>
       ),
     },
   ]
@@ -180,60 +235,61 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const current = steps[step]
 
   return (
-    <Box className="h-full flex items-center justify-center bg-surface-50 dark:bg-surface-900">
-      <Box className="w-full max-w-lg mx-4">
-        <Box className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl overflow-hidden border border-surface-200/60 dark:border-surface-700/40">
-          <Box className="px-8 pt-8 pb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-50 dark:bg-surface-900">
+      <div className="w-full max-w-lg mx-4">
+        <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl overflow-hidden border border-surface-200/60 dark:border-surface-700/40">
+          <div className="px-8 pt-8 pb-4">
             <Typography variant="h5" className="font-bold text-center">{current.title}</Typography>
             <Typography variant="body2" color="text.secondary" className="text-center mt-1">{current.desc}</Typography>
-          </Box>
+          </div>
 
-          <Box className="px-8 pb-6 min-h-[240px] flex items-center justify-center">
+          <div className="px-8 pb-6 min-h-[240px] flex items-center justify-center">
             {current.content}
-          </Box>
+          </div>
 
-          <Box className="px-8 pb-8 flex items-center justify-between">
-            <Button
-              variant="text"
-              size="small"
+          <div className="px-8 pb-8 flex items-center justify-between">
+            <button
               onClick={() => step > 0 && setStep(step - 1)}
               disabled={step === 0}
-              startIcon={<ChevronLeft className="w-4 h-4" />}
+              className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{ color: step === 0 ? undefined : localConfig.accent_color }}
             >
+              <ChevronLeft className="w-4 h-4" />
               上一步
-            </Button>
+            </button>
 
-            <Box className="flex gap-1.5">
+            <div className="flex gap-1.5">
               {steps.map((_, i) => (
-                <Box
+                <div
                   key={i}
-                  className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-[var(--accent-color)]' : 'bg-surface-300 dark:bg-surface-600'}`}
+                  className="w-2 h-2 rounded-full transition-colors"
+                  style={{ backgroundColor: i === step ? localConfig.accent_color : undefined, opacity: i === step ? 1 : 0.3 }}
                 />
               ))}
-            </Box>
+            </div>
 
             {isLast ? (
-              <Button
-                variant="contained"
-                size="small"
+              <button
                 onClick={complete}
-                endIcon={<CheckCircle className="w-4 h-4" />}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 active:scale-95"
+                style={{ backgroundColor: localConfig.accent_color }}
               >
+                <CheckCircle className="w-4 h-4" />
                 完成
-              </Button>
+              </button>
             ) : (
-              <Button
-                variant="contained"
-                size="small"
+              <button
                 onClick={() => setStep(step + 1)}
-                endIcon={<ChevronRight className="w-4 h-4" />}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 active:scale-95"
+                style={{ backgroundColor: localConfig.accent_color }}
               >
                 下一步
-              </Button>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             )}
-          </Box>
-        </Box>
-      </Box>
-    </Box>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

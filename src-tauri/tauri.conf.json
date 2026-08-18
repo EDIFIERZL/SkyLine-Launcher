@@ -1,11 +1,11 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SkyLine Launcher",
-  "version": "1.0.0",
+  "version": "1.1.2",
   "identifier": "com.skyline.launcher",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://127.0.0.1:5173",
+    "devUrl": "http://127.0.0.1:1420",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },

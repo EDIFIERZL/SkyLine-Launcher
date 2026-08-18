@@ -5,16 +5,14 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useMemoryOptimizer } from '../hooks/useMemoryOptimizer'
 import { useAuthRefresh } from '../hooks/useAuthRefresh'
 import { NotificationContainer } from './NotificationContainer'
-import { MusicPlayerBar } from './music/MusicPlayerBar'
+import { ComponentIsland } from './island/ComponentIsland'
+import { DownloadCenter } from './DownloadCenter'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useDownloadStore } from '../stores/downloadStore'
 import {
   Minus,
   Square,
   X,
   Maximize,
-  Loader2,
-  CheckCircle2,
 } from 'lucide-react'
 import {
   Home as MuiHome,
@@ -80,16 +78,6 @@ export function Layout() {
   const { onTabSwitch } = useMemoryOptimizer()
   useAuthRefresh()
   const prevPathRef = useRef(location.pathname)
-
-  
-  const [activeTask, setActiveTask] = useState<import('../stores/downloadStore').DownloadTask | null>(null)
-  useEffect(() => {
-    const unsub = useDownloadStore.subscribe((s) => {
-      const active = s.tasks.find((t) => t.status === 'downloading')
-      setActiveTask(active ?? null)
-    })
-    return () => unsub()
-  }, [])
 
   const canZen = config.liquid_glass && config.liquid_glass_mode === 'normal' && ((config.background_type === 'image' && config.background_value) || config.background_type === 'video')
   
@@ -258,7 +246,7 @@ export function Layout() {
         data-tauri-drag-region
         onMouseDown={onHeaderMouseDown}
       >
-        <MusicPlayerBar />
+        <ComponentIsland />
 
         <div
           className="h-full flex items-center gap-2 px-4"
@@ -312,30 +300,7 @@ export function Layout() {
         </main>
       </div>
 
-      {}
-      {activeTask && (
-        <div className="fixed bottom-16 left-0 right-0 z-50 px-4">
-          <div className="max-w-xl mx-auto bg-surface-800 border border-white/10 rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3">
-            {activeTask.status === 'done' ? (
-              <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
-            ) : (
-              <Loader2 className="w-5 h-5 text-sky-400 animate-spin shrink-0" />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-surface-200 truncate">{activeTask.title}</div>
-              <div className="text-[10px] text-surface-400 truncate">{activeTask.message}</div>
-              {activeTask.progress != null && (
-                <div className="mt-1 h-1 bg-surface-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent-500 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.round(activeTask.progress * 100)}%` }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <DownloadCenter serverCard={!!(config.server_address && !config.hide_server_card)} />
     </div>
   )
 }
