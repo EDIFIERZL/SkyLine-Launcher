@@ -121,40 +121,6 @@ pub async fn get_modrinth_project_detail(slug: String) -> Result<modpack::Modrin
 }
 
 #[tauri::command]
-pub async fn get_curseforge_project(mod_id: u64) -> Result<modpack::CuseForgeMod, String> {
-    modpack::get_cuseforge_project(mod_id).await
-}
-
-#[tauri::command]
-pub async fn get_curseforge_files(mod_id: u64) -> Result<Vec<modpack::CuseForgeFile>, String> {
-    modpack::get_cuseforge_files(mod_id).await
-}
-
-#[tauri::command]
-pub async fn search_curseforge_category(
-    query: String,
-    game_version: Option<String>,
-    category: Option<String>,
-) -> Result<Vec<modpack::CuseForgeMod>, String> {
-    let class_id = match category.as_deref() {
-        Some("resourcepacks") => 12,
-        Some("shaderpacks") => 6552,
-        Some("modpacks") => 4471,
-        Some("datapacks") | Some("maps") => 432,
-        _ => 6,
-    };
-    modpack::search_cuseforge_with_class(&query, game_version.as_deref(), class_id).await
-}
-
-#[tauri::command]
-pub async fn recommended_curseforge_mods(
-    limit: u32,
-    game_version: Option<String>,
-) -> Result<Vec<modpack::CuseForgeMod>, String> {
-    modpack::recommended_cuseforge_mods(limit, game_version.as_deref()).await
-}
-
-#[tauri::command]
 pub async fn download_file(
     url: String,
     filename: String,
@@ -227,66 +193,13 @@ pub async fn install_modrinth_modpack(
 }
 
 #[tauri::command]
-pub async fn install_curseforge_modpack(
-    _file_id: u64,
-    file_name: String,
-    download_url: String,
-    app_handle: tauri::AppHandle,
-) -> Result<String, String> {
-    let temp = std::env::temp_dir();
-    let threads = crate::commands::instance::load_download_threads();
-    let app2 = app_handle.clone();
-    let path = modpack::download_file_to(
-        &download_url,
-        &file_name,
-        &temp,
-        move |done, total| {
-            let pct = if total > 0 { done as f64 / total as f64 } else { 0.0 };
-            let _ = app2.emit(
-                "install-progress",
-                &crate::mc::install::InstallProgress {
-                    stage: "modpack".into(),
-                    progress: 0.5 * pct,
-                    message: format!("正在下载整合包... ({:.0}%)", pct * 100.0),
-                },
-            );
-        },
-        threads,
-    )
-    .await?;
-
-    let instance_id = modpack::modpack::impot_cuseforge_pack(&std::path::PathBuf::from(&path)).await?;
-    std::fs::remove_file(&path).ok();
-
-    ensure_game_and_loader(&instance_id, app_handle).await?;
-    Ok(instance_id)
-}
-
-#[tauri::command]
 pub async fn export_modrinth_pack(instance_id: String, output_path: String) -> Result<String, String> {
     modpack::modpack::export_modrinth_pack(&instance_id, &std::path::PathBuf::from(&output_path)).await
 }
 
 #[tauri::command]
-pub async fn export_curseforge_pack(instance_id: String, output_path: String) -> Result<String, String> {
-    modpack::modpack::expot_cuseforge_pack(&instance_id, &std::path::PathBuf::from(&output_path)).await
-}
-
-#[tauri::command]
-pub async fn search_curseforge_mods(query: String, game_version: Option<String>) -> Result<Vec<modpack::CuseForgeMod>, String> {
-    modpack::search_cuseforge(&query, game_version.as_deref(), None).await
-}
-
-#[tauri::command]
 pub async fn import_modrinth_pack(pack_path: String, app_handle: tauri::AppHandle) -> Result<String, String> {
     let instance_id = modpack::modpack::import_modrinth_pack(&std::path::PathBuf::from(&pack_path)).await?;
-    ensure_game_and_loader(&instance_id, app_handle).await?;
-    Ok(instance_id)
-}
-
-#[tauri::command]
-pub async fn import_curseforge_pack(pack_path: String, app_handle: tauri::AppHandle) -> Result<String, String> {
-    let instance_id = modpack::modpack::impot_cuseforge_pack(&std::path::PathBuf::from(&pack_path)).await?;
     ensure_game_and_loader(&instance_id, app_handle).await?;
     Ok(instance_id)
 }
@@ -310,7 +223,6 @@ pub async fn detect_modpack_type(pack_path: String) -> Result<String, String> {
     let pack_type = modpack::modpack::detect_modpack_type(&std::path::PathBuf::from(&pack_path))?;
     Ok(match pack_type {
         modpack::modpack::ModpackType::Modrinth => "modrinth".to_string(),
-        modpack::modpack::ModpackType::CuseForge => "curseforge".to_string(),
         modpack::modpack::ModpackType::MMC => "mmc".to_string(),
         modpack::modpack::ModpackType::HMCL => "hmcl".to_string(),
         modpack::modpack::ModpackType::MCBBS => "mcbbs".to_string(),

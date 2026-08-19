@@ -262,22 +262,27 @@ export function SkinViewer3D({
     viewer.animation.speed = 0.8
     if (username?.trim()) {
       viewer.nameTag = username.trim()
-      
-      
       try {
-        
-        ;(viewer as unknown as { nameTagYOffset: number }).nameTagYOffset = 28
-        viewer.nameTag?.scale.setScalar(2.1)
-        // Override canvas width to remove name length limit
+        ;(viewer as unknown as { nameTagYOffset: number }).nameTagYOffset = 35
+        viewer.nameTag?.scale.setScalar(2.8)
         const nt = viewer.nameTag as any
         if (nt && nt.canvas) {
           const ctx = nt.canvas.getContext('2d')
           if (ctx) {
+            ctx.font = 'bold 28px sans-serif'
             const metrics = ctx.measureText(nt.text || username.trim())
-            const needed = Math.ceil(metrics.width) + 16
+            const needed = Math.ceil(metrics.width) + 24
             if (needed > nt.canvas.width) {
               nt.canvas.width = needed
-              nt.redraw?.() ?? (() => { ctx.font = '24px sans-serif'; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = 3; ctx.strokeText(nt.text || username.trim(), needed / 2, 18); ctx.fillText(nt.text || username.trim(), needed / 2, 18) })()
+              nt.redraw?.() ?? (() => {
+                ctx.font = 'bold 28px sans-serif'
+                ctx.fillStyle = 'white'
+                ctx.strokeStyle = 'rgba(0,0,0,0.8)'
+                ctx.lineWidth = 4
+                const cx = needed / 2
+                ctx.strokeText(nt.text || username.trim(), cx, 22)
+                ctx.fillText(nt.text || username.trim(), cx, 22)
+              })()
               if (nt.material?.map) nt.material.map.needsUpdate = true
             }
           }
@@ -309,14 +314,15 @@ export function SkinViewer3D({
     if (!v || !username) return
     try {
       v.nameTag = username.trim() || '玩家'
-      ;(v as unknown as { nameTagYOffset: number }).nameTagYOffset = 28
-      v.nameTag?.scale.setScalar(2.1)
+      ;(v as unknown as { nameTagYOffset: number }).nameTagYOffset = 35
+      v.nameTag?.scale.setScalar(2.8)
       const nt = v.nameTag as any
       if (nt && nt.canvas) {
         const ctx = nt.canvas.getContext('2d')
         if (ctx) {
+          ctx.font = 'bold 28px sans-serif'
           const metrics = ctx.measureText(nt.text || username.trim())
-          const needed = Math.ceil(metrics.width) + 16
+          const needed = Math.ceil(metrics.width) + 24
           if (needed > nt.canvas.width) {
             nt.canvas.width = needed
             nt.redraw?.()
@@ -511,8 +517,8 @@ export function SkinViewer3D({
         {ANIM_OPTIONS.map(a => (
           <button key={a.value} onClick={() => setAnimation(a.value)}
             className={`text-xs py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-              anim === a.value ? 'bg-accent-500/30 text-accent-300 border border-accent-500/50'
-                : 'bg-surface-800 text-surface-400 border border-white/5 hover:border-white/20 hover:text-surface-200'
+              anim === a.value ? 'bg-accent-500/15 text-accent-700 border border-accent-500/60 dark:bg-accent-500/30 dark:text-accent-300'
+                : 'bg-surface-100 text-surface-600 border border-surface-200 hover:border-surface-300 hover:text-surface-900 dark:bg-surface-800 dark:text-surface-400 dark:border-white/5 dark:hover:border-white/20 dark:hover:text-surface-200'
             }`}>
             {a.label}
           </button>
@@ -526,8 +532,8 @@ export function SkinViewer3D({
           {BG_OPTIONS.map(b => (
             <button key={b.value} onClick={() => setBackground(b.value)} title={b.label}
               className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs border transition-colors whitespace-nowrap ${
-                bg === b.value ? 'border-accent-500/50 bg-accent-500/20 text-accent-200'
-                  : 'border-white/10 bg-surface-800 text-surface-400 hover:border-white/20'
+                bg === b.value ? 'border-accent-500/60 bg-accent-500/10 text-accent-700 dark:border-accent-500/50 dark:bg-accent-500/20 dark:text-accent-200'
+                  : 'border-surface-200 bg-surface-100 text-surface-600 hover:border-surface-300 dark:border-white/10 dark:bg-surface-800 dark:text-surface-400 dark:hover:border-white/20'
               }`}>
               <span className="w-3 h-3 rounded-full border border-white/20 inline-block" style={{ background: b.color }} />
               <span className="hidden sm:inline">{b.label}</span>
@@ -537,8 +543,8 @@ export function SkinViewer3D({
         <div className="flex items-center gap-1.5 ml-auto">
           <button onClick={() => setShowCape(v => !v)}
             className={`px-2.5 py-1 rounded-lg text-xs border transition-colors whitespace-nowrap ${
-              showCape ? 'border-accent-500/50 bg-accent-500/20 text-accent-200'
-                : 'border-white/10 bg-surface-800 text-surface-400 hover:border-white/20'
+              showCape ? 'border-accent-500/60 bg-accent-500/10 text-accent-700 dark:border-accent-500/50 dark:bg-accent-500/20 dark:text-accent-200'
+                : 'border-surface-200 bg-surface-100 text-surface-600 hover:border-surface-300 dark:border-white/10 dark:bg-surface-800 dark:text-surface-400 dark:hover:border-white/20'
             }`}>
             {showCape ? '披风: 开' : '披风: 关'}
           </button>

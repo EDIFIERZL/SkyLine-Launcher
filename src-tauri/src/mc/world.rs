@@ -8,10 +8,12 @@ pub struct WorldInfo {
     pub game_mode: String,
     pub seed: Option<i64>,
     pub version: Option<String>,
+    #[serde(rename = "last_played")]
     pub last_playerd: Option<String>,
     pub play_time: u64,
     pub size_kb: u64,
     pub icon: Option<String>,
+    #[serde(rename = "is_hardcore")]
     pub is_hadcoe: bool,
     pub difficulty: Option<String>,
     pub spawn_x: Option<i32>,

@@ -33,7 +33,7 @@ const HELP_SECTIONS: HelpSection[] = [
     id: 'download',
     icon: Download,
     title: '下载资源',
-    content: '在「资源」页面可以下载：\n• Minecraft 版本\n• 模组（Forge/Fabric/NeoForge/Quilt）\n• 整合包\n• 资源包\n• 光影包\n\n支持 CurseForge 和 Modrinth 两个平台。',
+    content: '在「资源」页面可以下载：\n• Minecraft 版本\n• 模组（Forge/Fabric/NeoForge/Quilt）\n• 整合包\n• 资源包\n• 光影包\n\n仅支持 Modrinth 平台。',
   },
   {
     id: 'account',
@@ -54,7 +54,6 @@ const EXTERNAL_LINKS = [
   { label: 'Forge 官网', url: 'https://files.minecraftforge.net' },
   { label: 'Fabric 官网', url: 'https://fabricmc.net' },
   { label: 'Modrinth', url: 'https://modrinth.com' },
-  { label: 'CurseForge', url: 'https://www.curseforge.com' },
   { label: 'MCBBS', url: 'https://www.mcbbs.net' },
 ]
 

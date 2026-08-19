@@ -388,7 +388,7 @@ export function Account() {
             </div>
 
           <Card>
-            <Box className="space-y-4">
+           <Box className="space-y-5">
               <Box className="flex items-center gap-4">
                 <SkinAvatar size={64} />
                 <Box>
@@ -734,10 +734,10 @@ export function Account() {
             )}
 
             {lsDeviceInfo && (
-              <Box className="space-y-3">
-                <Box className="bg-surface-50 dark:bg-surface-800 p-3 rounded-lg space-y-2">
+              <Box className="space-y-5">
+                <Box className="bg-surface-50 dark:bg-surface-800 p-4 rounded-lg space-y-4">
                   <Typography variant="subtitle2">请在浏览器中打开以下链接完成授权：</Typography>
-                  <Box className="flex items-center gap-2">
+                  <Box className="account-input-action-row">
                     <input
                       value={lsDeviceInfo.verification_uri_complete ?? lsDeviceInfo.verification_uri}
                       readOnly
@@ -773,7 +773,7 @@ export function Account() {
                   <RotateCw className={`w-3 h-3 ${lsPolling ? 'animate-spin' : ''}`} />
                   <span>{lsPolling ? '正在等待授权完成...' : '点击上方按钮打开链接'}</span>
                 </Box>
-                <Button variant="text" fullWidth color="error" onClick={handleLittleSkinCancel} disabled={lsPolling}>
+                <Button variant="text" fullWidth color="error" onClick={handleLittleSkinCancel}>
                   取消登录
                 </Button>
               </Box>

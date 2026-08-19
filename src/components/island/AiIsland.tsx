@@ -353,7 +353,7 @@ export function AiIsland() {
             )}
           </div>
 
-          <div className="flex items-center gap-1 pr-2 shrink-0">
+          <div className="flex items-center gap-2 pr-2 shrink-0">
             <button
               onClick={clearAll}
               className="w-6 h-6 rounded-full flex items-center justify-center text-surface-400 hover:text-red-500 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors cursor-pointer"

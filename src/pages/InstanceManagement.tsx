@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { Box, Typography, Card, Button, IconButton, Input, Loading, EmptyState, AlertBox, Tabs, Chip } from '../components/material'
-import { ArrowLeft, Puzzle, Image, Palette, FolderOpen, Map, FileText, Settings, RefreshCw, ToggleRight, ToggleLeft, Trash2, Download, Eye, EyeOff, PackageOpen } from 'lucide-react'
+import { ArrowLeft, Puzzle, Image, Palette, FolderOpen, Map, FileText, Settings, RefreshCw, ToggleRight, ToggleLeft, Trash2, Download, Eye, EyeOff, PackageOpen, Skull, Clock, Hash, Gamepad2 } from 'lucide-react'
 import type { ModInfo, Instance } from '../types'
 
 interface PackInfo {
@@ -49,9 +49,10 @@ export function InstanceManagement() {
   const [resourcePacks, setResourcePacks] = useState<PackInfo[]>([])
   const [shaderPacks, setShaderPacks] = useState<PackInfo[]>([])
   const [dataPacks, setDataPacks] = useState<PackInfo[]>([])
-  const [worlds, setWorlds] = useState<{ name: string; path: string; game_mode: string; size_kb: number; icon: string | null; is_hardcore: boolean }[]>([])
+  const [worlds, setWorlds] = useState<{ name: string; path: string; game_mode: string; seed: number | null; size_kb: number; icon: string | null; is_hardcore: boolean; difficulty: string | null; play_time: number; spawn_x: number | null; spawn_z: number | null }[]>([])
   const [schematics, setSchematics] = useState<SchematicInfo[]>([])
   const [message, setMessage] = useState<string | null>(null)
+  const [worldSearch, setWorldSearch] = useState('')
   const [loadingTab, setLoadingTab] = useState<Record<string, boolean>>({})
 
   const setTabLoading = (tab: string, v: boolean) => setLoadingTab((prev) => ({ ...prev, [tab]: v }))
@@ -117,9 +118,14 @@ export function InstanceManagement() {
         name: w.name,
         path: w.path,
         game_mode: w.game_mode,
+        seed: w.seed ?? null,
         size_kb: w.size_kb,
         icon: w.icon,
         is_hardcore: w.is_hardcore,
+        difficulty: w.difficulty ?? null,
+        play_time: w.play_time ?? 0,
+        spawn_x: w.spawn_x ?? null,
+        spawn_z: w.spawn_z ?? null,
       }))))
       .catch(console.error)
       .finally(() => setTabLoading('worlds', false))
@@ -133,6 +139,13 @@ export function InstanceManagement() {
       .catch(console.error)
       .finally(() => setTabLoading('schematics', false))
   }
+
+  const filteredWorlds = useMemo(() => {
+    const query = worldSearch.trim().toLowerCase()
+    if (!query) return worlds
+    return worlds.filter((world) => [world.name, world.game_mode, world.seed == null ? '' : String(world.seed)]
+      .some((value) => value.toLowerCase().includes(query)))
+  }, [worldSearch, worlds])
 
   useEffect(() => {
     refreshAll()
@@ -208,7 +221,7 @@ export function InstanceManagement() {
     if (loadingTab['mods']) return <Loading />
     return (
       <>
-        <Box className="flex items-center gap-2 mb-4">
+        <Box className="flex items-center gap-3 mb-4 flex-wrap">
           <Button size="small" variant="outlined" startIcon={<FolderOpen className="w-3.5 h-3.5" />} onClick={() => handleOpenFolder('mods')}>
             打开模组文件夹
           </Button>
@@ -316,6 +329,16 @@ export function InstanceManagement() {
     )
   }
 
+  const GAME_MODE_CN: Record<string, string> = {
+    survival: '生存', creative: '创造', adventure: '冒险', spectator: '旁观',
+    '0': '生存', '1': '创造', '2': '冒险', '3': '旁观',
+  }
+  const formatPlayTime = (s: number) => {
+    if (!s) return ''
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60)
+    return h > 0 ? `${h}h ${m}m` : `${m}m`
+  }
+
   const renderWorldsTab = () => {
     if (loadingTab['worlds']) return <Loading />
     return (
@@ -325,36 +348,79 @@ export function InstanceManagement() {
             打开存档文件夹
           </Button>
           <Button size="small" variant="outlined" startIcon={<Download className="w-3.5 h-3.5" />} onClick={handleImportWorld}>
-            添加世界 (world.zip)
+            导入世界
           </Button>
           <Button size="small" variant="outlined" startIcon={<RefreshCw className="w-3.5 h-3.5" />} onClick={loadWorlds}>
             刷新
           </Button>
-          <Box className="flex-1" />
+          <Box className="flex-1 min-w-4" />
           <Typography variant="caption" color="text.secondary">{worlds.length} 个世界</Typography>
         </Box>
+        {worlds.length > 0 && (
+          <Box className="mb-4 max-w-md">
+            <Input
+              placeholder="搜索世界名称、模式或种子..."
+              value={worldSearch}
+              onChange={(e) => setWorldSearch(e.target.value)}
+            />
+          </Box>
+        )}
         {worlds.length === 0 ? (
           <EmptyState
             icon={<Map className="w-12 h-12" />}
             title="暂无世界"
             description="将 world.zip 拖入或点击上方按钮添加"
           />
+        ) : filteredWorlds.length === 0 ? (
+          <EmptyState icon={<Map className="w-10 h-10" />} title="没有匹配的世界" description="尝试修改搜索关键词" />
         ) : (
           <Box className="space-y-2">
-            {worlds.map((w) => (
-              <Card key={w.path} className="px-4 py-3">
+            {filteredWorlds.map((w) => (
+              <Card key={w.path} className="px-4 py-3 hover:shadow-md transition-shadow">
                 <Box className="flex items-center gap-3">
-                  <Box className="w-10 h-10 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 flex items-center justify-center shrink-0">
-                    <Map className="w-5 h-5 text-cyan-500" />
-                  </Box>
+                  {w.icon ? (
+                    <img src={w.icon} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 border border-white/10" />
+                  ) : (
+                    <Box className="w-10 h-10 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 flex items-center justify-center shrink-0">
+                      <Map className="w-5 h-5 text-cyan-500" />
+                    </Box>
+                  )}
                   <Box className="flex-1 min-w-0">
                     <Box className="flex items-center gap-2">
-                      <Typography variant="subtitle2">{w.name}</Typography>
-                      {w.is_hardcore && <Chip label="极限" size="small" color="error" variant="outlined" />}
+                      <Typography variant="subtitle2" className="truncate">{w.name}</Typography>
+                      {w.is_hardcore && (
+                        <Chip icon={<Skull className="w-3 h-3" />} label="极限" size="small" color="error" variant="outlined" />
+                      )}
                     </Box>
-                    <Typography variant="caption" color="text.secondary">{w.game_mode} · {(w.size_kb / 1024).toFixed(1)} MB</Typography>
+                    <Box className="flex items-center gap-3 mt-0.5 flex-wrap">
+                      <span className="text-[11px] text-surface-500 flex items-center gap-1">
+                        <Gamepad2 className="w-3 h-3" />
+                        {GAME_MODE_CN[w.game_mode?.toLowerCase()] ?? w.game_mode ?? '未知'}
+                      </span>
+                      {w.seed != null && (
+                        <span className="text-[11px] text-surface-500 flex items-center gap-1">
+                          <Hash className="w-3 h-3" />
+                          {w.seed}
+                        </span>
+                      )}
+                      {w.play_time > 0 && (
+                        <span className="text-[11px] text-surface-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatPlayTime(w.play_time)}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-surface-500">
+                        {(w.size_kb / 1024).toFixed(1)} MB
+                      </span>
+                    </Box>
                   </Box>
                   <Box className="flex items-center gap-1 shrink-0">
+                    <IconButton
+                      title="查看地图"
+                      onClick={() => navigate(`/worlds/${instanceId}?world=${encodeURIComponent(w.path)}`)}
+                    >
+                      <Map className="w-4 h-4 text-cyan-400" />
+                    </IconButton>
                     <IconButton title="打开文件夹" onClick={() => handleOpenFolder('saves')}>
                       <FolderOpen className="w-4 h-4" />
                     </IconButton>

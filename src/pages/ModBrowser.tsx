@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Box, Typography, Card, Button, Input, Chip, Loading, EmptyState, AlertBox } from '../components/material'
-import { Search, Download, ChevronLeft, ChevronRight, PackageOpen, ArrowLeft, Globe, BookOpen, ChevronDown, ChevronRight as ChevronRightIcon } from 'lucide-react'
+import { Search, Download, ChevronLeft, ChevronRight, PackageOpen, ArrowLeft, ChevronDown, ChevronRight as ChevronRightIcon } from 'lucide-react'
 
 interface ModrinthProject {
   slug: string
@@ -31,26 +31,9 @@ interface ModrinthVersion {
   changelog: string | null
 }
 
-interface CurseForgeMod {
-  id: number
-  name: string
-  slug: string
-  summary: string
-  downloads: number
-  category: string | null
-  logo_url: string | null
-  authors: string[]
-  game_versions: string[]
-  date_modified: string
-}
-
-type Source = 'modrinth' | 'curseforge'
-
 export function ModBrowser() {
-  const [source, setSource] = useState<Source>('modrinth')
   const [query, setQuery] = useState('')
   const [modrinthResults, setModrinthResults] = useState<ModrinthProject[]>([])
-  const [cfResults, setCfResults] = useState<CurseForgeMod[]>([])
   const [loading, setLoading] = useState(false)
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<ModrinthProject | null>(null)
@@ -65,23 +48,18 @@ export function ModBrowser() {
     setLoading(true)
     setError(null)
     try {
-      if (source === 'modrinth') {
-        const res = await invoke<ModrinthProject[]>('search_modrinth_mods', { query, limit: 20, offset: newOffset })
-        setModrinthResults(res)
-      } else {
-        const res = await invoke<CurseForgeMod[]>('search_curseforge_mods', { query, gameVersion: null })
-        setCfResults(res)
-      }
+      const res = await invoke<ModrinthProject[]>('search_modrinth_mods', { query, limit: 20, offset: newOffset })
+      setModrinthResults(res)
       setOffset(newOffset)
     } catch (e) {
       setError(String(e))
     }
     setLoading(false)
-  }, [query, source])
+  }, [query])
 
   useEffect(() => {
     if (query.trim()) search()
-  }, [query, source])
+  }, [query])
 
   const selectProject = async (project: ModrinthProject) => {
     setSelected(project)
@@ -241,16 +219,7 @@ export function ModBrowser() {
     <Box className="space-y-4 max-w-5xl">
       <Typography variant="h5">模组浏览</Typography>
 
-      <Box className="flex gap-2">
-        <Button variant={source === 'modrinth' ? 'contained' : 'outlined'} startIcon={<Globe className="w-4 h-4" />} onClick={() => setSource('modrinth')}>
-          Modrinth
-        </Button>
-        <Button variant={source === 'curseforge' ? 'contained' : 'outlined'} startIcon={<BookOpen className="w-4 h-4" />} onClick={() => setSource('curseforge')}>
-          CurseForge
-        </Button>
-      </Box>
-
-      <form onSubmit={(e) => { e.preventDefault(); search() }} className="flex gap-2">
+      <form onSubmit={(e) => { e.preventDefault(); search() }} className="input-action-row">
         <Box className="flex-1">
           <Input placeholder="搜索模组..." value={query} onChange={(e) => setQuery(e.target.value)} />
         </Box>
@@ -261,7 +230,7 @@ export function ModBrowser() {
 
       {loading ? (
         <Loading />
-      ) : source === 'modrinth' && modrinthResults.length > 0 ? (
+      ) : modrinthResults.length > 0 ? (
         <>
           <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {modrinthResults.map((mod) => (
@@ -292,27 +261,6 @@ export function ModBrowser() {
             </Button>
           </Box>
         </>
-      ) : source === 'curseforge' && cfResults.length > 0 ? (
-        <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {cfResults.map((mod) => (
-            <Card key={mod.id} hoverable>
-              <Box className="flex gap-3">
-                {mod.logo_url && <img src={mod.logo_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
-                <Box className="min-w-0 flex-1">
-                  <Typography variant="subtitle2" className="truncate">{mod.name}</Typography>
-                  {mod.authors.length > 0 && <Typography variant="caption" color="text.secondary">{mod.authors.join(', ')}</Typography>}
-                  <Typography variant="body2" color="text.secondary" className="mt-1 line-clamp-2">{mod.summary}</Typography>
-                  <Box className="flex items-center gap-2 mt-2">
-                    <Typography variant="caption" color="text.secondary">{formatDownloads(mod.downloads)} 下载</Typography>
-                    {mod.game_versions.slice(0, 2).map((gv) => (
-                      <Chip key={gv} label={gv} size="small" variant="outlined" />
-                    ))}
-                  </Box>
-                </Box>
-              </Box>
-            </Card>
-          ))}
-        </Box>
       ) : (
         <EmptyState
           icon={<PackageOpen className="w-12 h-12" />}

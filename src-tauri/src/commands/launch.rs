@@ -5,19 +5,16 @@ use crate::mc::launch::{self, LaunchConfig, PreparedFiles};
 use crate::mc::process::{GameProcessInfo, GameExitInfo, ExitReason, LaunchStage, LaunchProgressEvent};
 use crate::mc::crash;
 use crate::mc::hardware;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use dashmap::DashMap;
 use tauri::{Emitter, State};
-use std::collections::HashMap;
 
-pub struct RunningGames(pub Arc<Mutex<HashMap<String, Arc<Mutex<Option<crate::mc::process::GameProcess>>>>>>);
+pub struct RunningGames(pub Arc<DashMap<String, Arc<tokio::sync::Mutex<crate::mc::process::GameProcess>>>>);
 
-pub struct CancelledLaunches(pub Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>);
+pub struct CancelledLaunches(pub Arc<DashMap<String, Arc<AtomicBool>>>);
 
-
-
-
-pub struct PreloadedGames(pub Arc<Mutex<HashMap<String, PreparedFiles>>>);
+pub struct PreloadedGames(pub Arc<DashMap<String, PreparedFiles>>);
 
 
 static PRELOAD_OPTIMIZING: AtomicBool = AtomicBool::new(false);
@@ -179,10 +176,7 @@ pub async fn preload_game(
     let rresult = launch::prepare_game_files(&config).await?;
 
     // Cache it for instant launch
-    {
-        let mut map = preloaderd_games.0.lock().map_err(|e| e.to_string())?;
-        map.insert(instance_id.clone(), rresult.clone());
-    }
+    preloaderd_games.0.insert(instance_id.clone(), rresult.clone());
 
     let _ = app_handle.emit("preload-complete", &instance_id);
 
@@ -224,8 +218,7 @@ pub async fn cancel_preload(
     instance_id: String,
     preloaderd_games: State<'_, PreloadedGames>,
 ) -> Result<(), String> {
-    let mut map = preloaderd_games.0.lock().map_err(|e| e.to_string())?;
-    map.remove(&instance_id);
+    preloaderd_games.0.remove(&instance_id);
     Ok(())
 }
 
@@ -352,12 +345,10 @@ pub async fn launch_game(
 ) -> Result<GameProcessInfo, String> {
     let launch_start = std::time::Instant::now();
     log::info!("[launch] start for instance {} quick_world={:?} quick_server={:?}", instance_id, quick_world, quick_server);
-    let cancel_flag = {
-        let mut map = cancelled_launches.0.lock().map_err(|e| e.to_string())?;
-        map.entry(instance_id.clone())
-            .or_insert_with(|| Arc::new(AtomicBool::new(false)))
-            .clone()
-    };
+    let cancel_flag = cancelled_launches.0
+        .entry(instance_id.clone())
+        .or_insert_with(|| Arc::new(AtomicBool::new(false)))
+        .clone();
     let check_cancelled = || -> Result<(), String> {
         if cancel_flag.load(Ordering::SeqCst) {
             Err("启动已取消".to_string())
@@ -369,10 +360,7 @@ pub async fn launch_game(
     // ═══════════════════════════════════════════════════════════════════════
     // FAST PATH: check preload cache FIRST — skip ALL Java/config/instance I/O
     // ═══════════════════════════════════════════════════════════════════════
-    let preloaderd = {
-        let mut map = preloaderd_games.0.lock().map_err(|e| e.to_string())?;
-        map.remove(&instance_id)
-    };
+    let preloaderd = preloaderd_games.0.remove(&instance_id).map(|v| v.1);
 
     let config = if let Some(cached) = preloaderd {
         // ── Cache HIT: build LaunchConfig from cached values + fresh auth ──
@@ -527,8 +515,7 @@ pub async fn launch_game(
     let pid = game.pid;
     let log_rx = game.log_rx.take().expect("log_rx already taken");
 
-    let game_arc = Arc::new(Mutex::new(Some(game)));
-    let mut games = running_games.0.lock().map_err(|e| e.to_string())?;
+    let game_arc = Arc::new(tokio::sync::Mutex::new(game));
 
     let _ = app_handle.emit("launch-progress", &LaunchProgressEvent {
         instance_id: instance_id.clone(),
@@ -556,12 +543,8 @@ pub async fn launch_game(
         loop {
             check_count += 1;
             let (is_running, exit_info, has_window) = {
-                let lock = game_for_thread.lock().unwrap_or_else(|e| e.into_inner());
-                if let Some(ref g) = *lock {
-                    (g.is_running(), g.get_exit_info(), g.has_window())
-                } else {
-                    (false, None, false)
-                }
+                let lock = game_for_thread.lock().await;
+                (lock.is_running(), lock.get_exit_info(), lock.has_window())
             };
 
             if has_window && !window_found_once {
@@ -613,9 +596,7 @@ pub async fn launch_game(
                     play_time_secs: play_time,
                 };
                 let _ = app_for_exit.emit("game-stopped", &exit_info);
-                if let Ok(mut map) = cancellations_for_exit.lock() {
-                    map.remove(&instance_for_exit);
-                }
+                cancellations_for_exit.remove(&instance_for_exit);
                 break;
             }
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -629,7 +610,7 @@ pub async fn launch_game(
         }
     });
 
-    games.insert(instance_id.clone(), game_arc.clone());
+    running_games.0.insert(instance_id.clone(), game_arc.clone());
     log::info!("[launch] {} total launch_game took {} ms", instance_id, launch_start.elapsed().as_millis());
 
     Ok(GameProcessInfo {
@@ -644,16 +625,10 @@ pub async fn stop_game(
     running_games: State<'_, RunningGames>,
     cancelled_launches: State<'_, CancelledLaunches>,
 ) -> Result<(), String> {
-    if let Ok(mut map) = cancelled_launches.0.lock() {
-        map.remove(&instance_id);
-    }
-    let mut games = running_games.0.lock().map_err(|e| e.to_string())?;
-    if let Some(game) = games.remove(&instance_id) {
-        drop(games);
-        let g = game.lock().unwrap_or_else(|e| e.into_inner()).take();
-        if let Some(g) = g {
-            g.stop()?;
-        }
+    cancelled_launches.0.remove(&instance_id);
+    if let Some((_, game)) = running_games.0.remove(&instance_id) {
+        let g = game.lock().await;
+        g.stop()?;
     }
     Ok(())
 }
@@ -664,18 +639,13 @@ pub async fn cancel_game_launch(
     running_games: State<'_, RunningGames>,
     cancelled_launches: State<'_, CancelledLaunches>,
 ) -> Result<(), String> {
-    if let Ok(mut map) = cancelled_launches.0.lock() {
-        map.entry(instance_id.clone())
-            .or_insert_with(|| Arc::new(AtomicBool::new(false)))
-            .store(true, Ordering::SeqCst);
-    }
-    let mut games = running_games.0.lock().map_err(|e| e.to_string())?;
-    if let Some(game) = games.remove(&instance_id) {
-        drop(games);
-        let g = game.lock().unwrap_or_else(|e| e.into_inner()).take();
-        if let Some(g) = g {
-            g.stop()?;
-        }
+    cancelled_launches.0
+        .entry(instance_id.clone())
+        .or_insert_with(|| Arc::new(AtomicBool::new(false)))
+        .store(true, Ordering::SeqCst);
+    if let Some((_, game)) = running_games.0.remove(&instance_id) {
+        let g = game.lock().await;
+        g.stop()?;
     }
     Ok(())
 }

@@ -520,7 +520,7 @@ function GuestInputCard({
           helperText={hint}
         />
       </Box>
-      <Box className="flex items-center justify-center gap-2">
+      <Box className="input-action-row justify-center">
         <Button variant="contained" color="info" startIcon={<Users className="w-4 h-4" />} onClick={onJoin}>
           加入房间
         </Button>
@@ -720,4 +720,4 @@ function ErrorCard({
     </Card>
   )
 }
-
+

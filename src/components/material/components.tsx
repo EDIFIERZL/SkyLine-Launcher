@@ -217,6 +217,7 @@ interface SelectProps {
   fullWidth?: boolean
   size?: 'small' | 'medium'
   className?: string
+  renderValue?: (value: string) => React.ReactNode
 }
 
 export function Select({
@@ -228,6 +229,7 @@ export function Select({
   fullWidth = true,
   size = 'medium',
   className,
+  renderValue,
 }: SelectProps) {
   const handleChange = (e: SelectChangeEvent) => {
     onChange(e.target.value)
@@ -241,6 +243,7 @@ export function Select({
         onChange={handleChange}
         label={label}
         disabled={disabled}
+        renderValue={renderValue}
         sx={{ borderRadius: '12px' }}
       >
         {options.map((opt) => (

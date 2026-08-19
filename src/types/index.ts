@@ -185,7 +185,6 @@ export interface McmodItem {
   description: string
   mcmod_url: string
   modrinth_url: string | null
-  curseforge_url: string | null
 }
 
 export interface InstalledVersion {
@@ -383,31 +382,6 @@ export interface ModrinthDependency {
   version_id?: string | null
   dependency_type: string
   file_name?: string | null
-}
-
-export interface CurseForgeMod {
-  id: number
-  name: string
-  slug: string
-  summary: string
-  downloads: number
-  category: string | null
-  logo_url: string | null
-  authors: string[]
-  game_versions: string[]
-  date_modified: string
-}
-
-export interface CurseForgeFile {
-  id: number
-  display_name: string
-  file_name: string
-  file_date: string
-  game_versions: string[]
-  loaders: string[]
-  release_type?: number | null
-  file_length: number
-  download_url: string
 }
 
 export type DownloadKind = 'mods' | 'resourcepacks' | 'shaderpacks' | 'datapacks' | 'maps' | 'modpacks'

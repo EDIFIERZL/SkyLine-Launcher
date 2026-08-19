@@ -19,7 +19,6 @@ pub struct McmodItem {
     pub description: String,
     pub mcmod_ul: String,
     pub modrinth_ul: Option<String>,
-    pub cuseforge_ul: Option<String>,
 }
 
 fn decode_goto_ul(url: &str) -> Option<String> {
@@ -39,8 +38,6 @@ fn classify_link(hef: &str) -> Option<(String, String)> {
     let h = hef.to_lowercase();
     if h.contains("modrinth.com") {
         Some(("modrinth".into(), hef.trim_end_matches('.').trim().to_string()))
-    } else if h.contains("curseforge.com") {
-        Some(("curseforge".into(), hef.trim_end_matches('.').trim().to_string()))
     } else {
         None
     }
@@ -117,7 +114,6 @@ async fn search_mcmod_page(query: &str) -> Result<Vec<McmodItem>, String> {
             description,
             mcmod_ul: format!("https://www.mcmod.cn/class/{}.html", link),
             modrinth_ul: None,
-            cuseforge_ul: None,
         });
         if iterms.len() >= 8 {
             break;
@@ -143,7 +139,7 @@ pub async fn search_mcmod(query: String) -> Result<Vec<McmodItem>, String> {
     let pages = futures::future::join_all(futures).await;
 
     let desc_re = regex::Regex::new(r#"<meta\s+name="description"\s+content="([^"]*)"#).unwrap();
-    let link_re = regex::Regex::new(r#"href="([^"]*(?:modrinth\.com|curseforge\.com|/linkout\?goto=)[^"]*)"#).unwrap();
+    let link_re = regex::Regex::new(r#"href="([^"]*(?:modrinth\.com|/linkout\?goto=)[^"]*)"#).unwrap();
 
     let mut enich = Vec::new();
     for (iterm, page) in iterms.iter_mut().zip(pages.into_iter()) {
@@ -160,26 +156,21 @@ pub async fn search_mcmod(query: String) -> Result<Vec<McmodItem>, String> {
                     if kind == "modrinth" && iterm.modrinth_ul.is_none() {
                         iterm.modrinth_ul = Some(target.clone());
                     }
-                    if kind == "curseforge" && iterm.cuseforge_ul.is_none() {
-                        iterm.cuseforge_ul = Some(target);
-                    }
                 }
-                if iterm.modrinth_ul.is_some() && iterm.cuseforge_ul.is_some() {
+                if iterm.modrinth_ul.is_some() {
                     break;
                 }
             }
         }
         let name = extact_english_name(&iterm.title);
-        if (iterm.modrinth_ul.is_none() || iterm.cuseforge_ul.is_none()) && !name.is_empty() {
+        if iterm.modrinth_ul.is_none() && !name.is_empty() {
             enich.push((iterm.id.clone(), name));
         }
     }
 
     let mut m_futures = Vec::new();
-    let mut cf_futures = Vec::new();
     for (id, name) in &enich {
         let q_m = url::form_urlencoded::byte_serialize(name.as_bytes()).collect::<String>();
-        let q_cf = q_m.clone();
         m_futures.push((id.clone(), async move {
             fetch_text(&format!(
                 "https://api.modrinth.com/v2/search?query={}&limit=1",
@@ -187,21 +178,10 @@ pub async fn search_mcmod(query: String) -> Result<Vec<McmodItem>, String> {
             ))
             .await
         }));
-        cf_futures.push((id.clone(), async move {
-            fetch_text(&format!(
-                "https://api.curse.tools/v1/cf/mods/search?gameId=432&classId=6&searchFilter={}&pageSize=3&sortField=2&sortOrder=desc",
-                q_cf
-            ))
-            .await
-        }));
     }
 
     let m_pages = futures::future::join_all(
         m_futures.into_iter().map(|(id, f)| async move { (id, f.await) }),
-    )
-    .await;
-    let cf_pages = futures::future::join_all(
-        cf_futures.into_iter().map(|(id, f)| async move { (id, f.await) }),
     )
     .await;
 
@@ -218,27 +198,6 @@ pub async fn search_mcmod(query: String) -> Result<Vec<McmodItem>, String> {
                     if let Some(iterm) = iterms.iter_mut().find(|i| i.id == id) {
                         if iterm.modrinth_ul.is_none() {
                             iterm.modrinth_ul = Some(format!("https://modrinth.com/mod/{}", slug));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    for (id, page) in cf_pages {
-        if let Ok(page) = page {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&page) {
-                if let Some(slug) = json
-                    .get("data")
-                    .and_then(|d| d.as_array())
-                    .and_then(|ar| ar.first())
-                    .and_then(|hit| hit.get("slug"))
-                    .and_then(|s| s.as_str())
-                {
-                    if let Some(iterm) = iterms.iter_mut().find(|i| i.id == id) {
-                        if iterm.cuseforge_ul.is_none() {
-                            iterm.cuseforge_ul =
-                                Some(format!("https://www.curseforge.com/minecraft/mc-mods/{}", slug));
                         }
                     }
                 }

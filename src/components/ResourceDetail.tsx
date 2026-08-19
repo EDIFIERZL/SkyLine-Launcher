@@ -8,16 +8,14 @@ import { LoaderLogo } from './LoaderLogo'
 import { type VersionGroup } from './VersionIcon'
 import type {
   Instance, InstallProgress, ModrinthProject, ModrinthProjectDetail, ModrinthVersion, ModrinthDependency,
-  CurseForgeMod, CurseForgeFile, McmodItem, DownloadKind,
+  McmodItem, DownloadKind,
 } from '../types'
 import {
   ArrowLeft,
   Download as DownloadIcon,
   Globe,
-  BookOpen,
   Loader2,
   Heart,
-  Flame,
   Calendar,
   PackageOpen,
   Link as LinkIcon,
@@ -30,7 +28,6 @@ import {
 interface ResourceDetailProps {
   kind: DownloadKind
   project: ModrinthProject | null
-  cfMod: CurseForgeMod | null
   mcmod: McmodItem | null
   gameVersion?: string
   onClearGameVersion?: () => void
@@ -186,12 +183,6 @@ function mrResourceType(v: ModrinthVersion): ResourceType {
   return 'release'
 }
 
-function cfResourceType(f: CurseForgeFile): ResourceType {
-  if (f.release_type === 2) return 'beta'
-  if (f.release_type === 3) return 'alpha'
-  return 'release'
-}
-
 interface VersionItem {
   key: string
   name: string
@@ -201,17 +192,15 @@ interface VersionItem {
   loaders: string[]
   fileName: string
   fileSize: number
-  source: 'modrinth' | 'curseforge'
+  source: 'modrinth'
   resourceType: ResourceType
   gameType: VersionGroup
   mrVersion?: ModrinthVersion
-  cfFile?: CurseForgeFile
 }
 
 export function ResourceDetail({
   kind,
   project,
-  cfMod,
   mcmod,
   gameVersion,
   onClearGameVersion,
@@ -222,13 +211,9 @@ export function ResourceDetail({
   preferredInstanceId,
 }: ResourceDetailProps) {
   const [mrResolved, setMrResolved] = useState<ModrinthProject | null>(project)
-  const [cfResolved, setCfResolved] = useState<CurseForgeMod | null>(cfMod)
   const [mrDetail, setMrDetail] = useState<ModrinthProjectDetail | null>(null)
   const [mrVersions, setMrVersions] = useState<ModrinthVersion[]>([])
-  const [cfProject, setCfProject] = useState<CurseForgeMod | null>(null)
-  const [cfFiles, setCfFiles] = useState<CurseForgeFile[]>([])
   const [mrLoading, setMrLoading] = useState(false)
-  const [cfLoading, setCfLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
   const [iconErr, setIconErr] = useState(false)
@@ -243,18 +228,6 @@ export function ResourceDetail({
   const targetDir = kind === 'resourcepacks' ? 'resourcepacks' : kind === 'shaderpacks' ? 'shaderpacks' : kind === 'datapacks' ? 'datapacks' : 'mods'
   const isModpack = kind === 'modpacks'
   const isMap = kind === 'maps'
-
-  const searchModrinthFn = (query: string) => {
-    const limit = 5
-    const offset = 0
-    const gv = gameVersion || null
-    if (kind === 'resourcepacks') return invoke<ModrinthProject[]>('search_resource_packs', { query, limit, offset, gameVersion: gv })
-    if (kind === 'shaderpacks') return invoke<ModrinthProject[]>('search_shader_packs', { query, limit, offset, gameVersion: gv })
-    if (kind === 'datapacks') return invoke<ModrinthProject[]>('search_datapacks', { query, limit, offset, gameVersion: gv })
-    if (kind === 'maps') return invoke<ModrinthProject[]>('search_worlds', { query, limit, offset, gameVersion: gv })
-    if (kind === 'modpacks') return invoke<ModrinthProject[]>('search_modpacks', { query, limit, offset, gameVersion: gv })
-    return invoke<ModrinthProject[]>('search_modrinth_mods', { query, limit, offset, gameVersion: gv })
-  }
 
   const loadMr = async (p: ModrinthProject) => {
     setMrResolved(p)
@@ -276,62 +249,16 @@ export function ResourceDetail({
     setMrLoading(false)
   }
 
-  const loadCf = async (c: CurseForgeMod) => {
-    setCfResolved(c)
-    setIconErr(false)
-    setCfProject(null)
-    setCfFiles([])
-    setCfLoading(true)
-    setError(null)
-    try {
-      const [proj, files] = await Promise.all([
-        invoke<CurseForgeMod>('get_curseforge_project', { modId: c.id }),
-        invoke<CurseForgeFile[]>('get_curseforge_files', { modId: c.id }),
-      ])
-      setCfProject(proj)
-      setCfFiles(files)
-    } catch (e) {
-      setError(String(e))
-    }
-    setCfLoading(false)
-  }
-
-  const resolveCfFromMr = async (p: ModrinthProject) => {
-    try {
-      const res = await invoke<CurseForgeMod[]>('search_curseforge_category', {
-        query: p.title,
-        gameVersion: gameVersion || null,
-        category: kind === 'mods' ? null : kind,
-      })
-      if (res[0]) await loadCf(res[0])
-    } catch {  }
-  }
-
-  const resolveMrFromCf = async (c: CurseForgeMod) => {
-    try {
-      const res = await searchModrinthFn(c.name)
-      if (res[0]) await loadMr(res[0])
-    } catch {  }
-  }
-
   useEffect(() => {
     setIconErr(false)
     setMrResolved(project)
-    setCfResolved(cfMod)
     setMrDetail(null)
     setMrVersions([])
-    setCfProject(null)
-    setCfFiles([])
     setError(null)
     if (project) {
       void loadMr(project)
-      if (!cfMod) void resolveCfFromMr(project)
-    } else if (cfMod) {
-      void loadCf(cfMod)
-      void resolveMrFromCf(cfMod)
     }
-    
-  }, [project?.project_id || project?.slug, cfMod?.id])
+  }, [project?.project_id || project?.slug])
 
   const startTask = async (title: string, fn: () => Promise<unknown>) => {
     if (downloadingRef.current) return
@@ -370,7 +297,6 @@ export function ResourceDetail({
     setDownloading(item.key)
     try {
       if (item.source === 'modrinth' && item.mrVersion) await doMrDownload(item.mrVersion)
-      else if (item.source === 'curseforge' && item.cfFile) await doCfDownload(item.cfFile)
     } finally {
       setDownloading(null)
     }
@@ -394,30 +320,6 @@ export function ResourceDetail({
       }
       await startTask(v.name, () =>
         invoke('install_modrinth_content', { versionId: v.id, instanceId: targetInstanceId, target: targetDir }),
-      )
-    }
-  }
-
-  const doCfDownload = async (f: CurseForgeFile) => {
-    if (isModpack) {
-      await startTask(f.display_name, () =>
-        invoke('install_curseforge_modpack', { fileId: f.id, fileName: f.file_name, downloadUrl: f.download_url }),
-      )
-    } else if (isMap) {
-      if (!targetInstanceId) {
-        setError('请先创建或选择目标实例')
-        return
-      }
-      await startTask(f.display_name, () =>
-        invoke('import_world_from_url', { url: f.download_url, filename: f.file_name, instanceId: targetInstanceId }),
-      )
-    } else {
-      if (!targetInstanceId) {
-        setError('请先创建或选择目标实例')
-        return
-      }
-      await startTask(f.display_name, () =>
-        invoke('download_file', { url: f.download_url, filename: f.file_name, instanceId: targetInstanceId, target: targetDir }),
       )
     }
   }
@@ -458,14 +360,13 @@ export function ResourceDetail({
     }
   }
 
-  const headerIcon = iconErr ? null : (mrResolved?.icon_url || cfResolved?.logo_url || null)
-  const headerTitle = mrDetail?.title || mrResolved?.title || cfResolved?.name || '加载中...'
+  const headerIcon = iconErr ? null : (mrResolved?.icon_url || null)
+  const headerTitle = mrDetail?.title || mrResolved?.title || '加载中...'
   const headerAuthor =
     mrDetail?.team?.join(', ') ||
     mrResolved?.author ||
-    cfResolved?.authors?.join(', ') ||
     ''
-  const headerDesc = mrDetail?.description || mrResolved?.description || cfResolved?.summary || ''
+  const headerDesc = mrDetail?.description || mrResolved?.description || ''
   const headerCats = mrDetail?.categories?.length ? mrDetail.categories : mrResolved?.categories || []
 
   const allVersions: VersionItem[] = [
@@ -486,20 +387,6 @@ export function ResourceDetail({
         mrVersion: v,
       }
     }),
-    ...cfFiles.map((f) => ({
-      key: `cf-${f.id}`,
-      name: f.display_name,
-      versionNumber: undefined as string | undefined,
-      date: f.file_date,
-      gameVersions: f.game_versions,
-      loaders: f.loaders,
-      fileName: f.file_name,
-      fileSize: f.file_length,
-      source: 'curseforge' as const,
-      resourceType: cfResourceType(f),
-      gameType: classifyGameVersions(f.game_versions),
-      cfFile: f,
-    })),
   ]
 
   const baseVersions = gameVersion
@@ -548,7 +435,7 @@ export function ResourceDetail({
       }),
     }))
 
-  const showSpinner = (mrLoading || cfLoading) && mrVersions.length === 0 && cfFiles.length === 0
+  const showSpinner = mrLoading && mrVersions.length === 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -601,16 +488,6 @@ export function ResourceDetail({
                         <Calendar className="w-3.5 h-3.5" /> {formatDate(mrDetail?.updated || mrResolved?.date_modified)}
                       </span>
                     )}
-                  </>
-                )}
-                {cfProject && (
-                  <>
-                    <span className="flex items-center gap-1 text-xs text-surface-500">
-                      <Flame className="w-3.5 h-3.5" /> {formatDownloads(cfProject.downloads)} 下载
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-surface-500">
-                      <Calendar className="w-3.5 h-3.5" /> {formatDate(cfProject.date_modified)}
-                    </span>
                   </>
                 )}
               </Box>
@@ -737,7 +614,7 @@ export function ResourceDetail({
             <Loader2 className="w-6 h-6 animate-spin text-surface-400" />
           </Box>
         ) : grouped.length === 0 ? (
-          <EmptyStateDetail title="暂无可下载的版本" desc="Modrinth 与 CurseForge 均暂无可用版本" />
+          <EmptyStateDetail title="暂无可下载的版本" desc="Modrinth 暂无可用版本" />
         ) : sortedVersionGroups.length === 0 ? (
           <EmptyStateDetail title="没有符合筛选条件的版本" desc="试试切换游戏版本、加载器或版本类型筛选" />
         ) : (
@@ -788,14 +665,8 @@ export function ResourceDetail({
                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${resMeta.cls}`}>
                                   {resMeta.label}
                                 </span>
-                                <span
-                                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${
-                                    item.source === 'modrinth'
-                                      ? 'bg-[#1bd96a]/10 text-[#17b35a]'
-                                      : 'bg-[#f16436]/10 text-[#d55428]'
-                                  }`}
-                                >
-                                  {item.source === 'modrinth' ? 'Modrinth' : 'CurseForge'}
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 bg-[#1bd96a]/10 text-[#17b35a]`}>
+                                  Modrinth
                                 </span>
                               </Box>
                               <Box className="flex flex-wrap gap-1.5 mt-1.5">
@@ -849,11 +720,6 @@ export function ResourceDetail({
                 {mcmod.modrinth_url && (
                   <Button size="small" variant="outlined" startIcon={<Globe className="w-3.5 h-3.5" />} onClick={() => open(mcmod.modrinth_url!)}>
                     打开 Modrinth
-                  </Button>
-                )}
-                {mcmod.curseforge_url && (
-                  <Button size="small" variant="outlined" startIcon={<BookOpen className="w-3.5 h-3.5" />} onClick={() => open(mcmod.curseforge_url!)}>
-                    打开 CurseForge
                   </Button>
                 )}
               </Box>

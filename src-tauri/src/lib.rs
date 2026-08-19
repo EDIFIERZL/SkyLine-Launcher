@@ -12,7 +12,7 @@ use commands::auth::AuthState;
 use commands::launch::{RunningGames, CancelledLaunches, PreloadedGames};
 use commands::download::DownloadState;
 use commands::terracotta::TerracottaPot;
-use std::collections::HashMap;
+use dashmap::DashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
@@ -20,6 +20,11 @@ use tauri::Manager;
 
 
 static STARTUP_OPTIMIZED: AtomicBool = AtomicBool::new(false);
+static STARTUP_OPTIMIZED_NOTIFY: once_cell::sync::Lazy<tokio::sync::Notify> = once_cell::sync::Lazy::new(|| tokio::sync::Notify::new());
+
+fn get_startup_notify() -> &'static tokio::sync::Notify {
+    &STARTUP_OPTIMIZED_NOTIFY
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -29,9 +34,9 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .manage(AuthState(Mutex::new(None)))
-        .manage(RunningGames(Arc::new(Mutex::new(HashMap::new()))))
-        .manage(CancelledLaunches(Arc::new(Mutex::new(HashMap::new()))))
-        .manage(PreloadedGames(Arc::new(Mutex::new(HashMap::new()))))
+        .manage(RunningGames(Arc::new(DashMap::new())))
+        .manage(CancelledLaunches(Arc::new(DashMap::new())))
+        .manage(PreloadedGames(Arc::new(DashMap::new())))
         .manage(TerracottaPot(Mutex::new(None)))
         .manage(DownloadState(Arc::new(tokio::sync::Mutex::new(
             download::manager::DownloadManager::new(3, download::manager::DownloadSource::Auto)
@@ -55,8 +60,6 @@ pub fn run() {
             {
                 let handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    
-                    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
                     if let Ok(cfg) = crate::commands::settings::load_config() {
                         if let Some(last) = cfg.last_selected_instance {
                             let _ = crate::preload_last_instance(handle, last).await;
@@ -66,17 +69,12 @@ pub fn run() {
             }
 
             std::thread::spawn(|| {
-                
-                
-                
                 crate::mc::nt_memory::optimize(true);
-                std::thread::sleep(std::time::Duration::from_millis(200));
                 crate::mc::nt_memory::optimize(true);
-                std::thread::sleep(std::time::Duration::from_millis(200));
                 crate::mc::nt_memory::optimize(true);
-                std::thread::sleep(std::time::Duration::from_millis(100));
                 crate::mc::nt_memory::optimize(true);
                 STARTUP_OPTIMIZED.store(true, Ordering::SeqCst);
+                get_startup_notify().notify_one();
             });
 
             
@@ -259,16 +257,8 @@ commands::auth::littleskin_auth_refresh,
             commands::modpack::resolve_modrinth_dependencies,
             commands::modpack::download_file,
             commands::modpack::install_modrinth_modpack,
-            commands::modpack::install_curseforge_modpack,
-            commands::modpack::search_curseforge_mods,
-            commands::modpack::search_curseforge_category,
-            commands::modpack::recommended_curseforge_mods,
-            commands::modpack::get_curseforge_project,
-            commands::modpack::get_curseforge_files,
             commands::modpack::export_modrinth_pack,
-            commands::modpack::export_curseforge_pack,
             commands::modpack::import_modrinth_pack,
-            commands::modpack::import_curseforge_pack,
             commands::modpack::import_mmc_pack,
             commands::modpack::import_hmcl_pack,
             commands::modpack::detect_modpack_type,
@@ -394,22 +384,16 @@ async fn preload_last_instance(handle: tauri::AppHandle, instance_id: String) ->
 
     let result = crate::mc::launch::prepare_game_files(&config).await?;
 
-    
     let preloaderd = handle.state::<commands::launch::PreloadedGames>();
-    let mut map = preloaderd.0.lock().map_err(|e| e.to_string())?;
-    map.insert(instance_id, result.clone());
+    preloaderd.0.insert(instance_id, result.clone());
 
     
     
     
     let warm_files = result.clone();
     tauri::async_runtime::spawn(async move {
-        
-        for _ in 0..80 {
-            if STARTUP_OPTIMIZED.load(Ordering::SeqCst) {
-                break;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        if !STARTUP_OPTIMIZED.load(Ordering::SeqCst) {
+            get_startup_notify().notified().await;
         }
         let _ = std::thread::Builder::new()
             .name("jvm-prewarm".into())

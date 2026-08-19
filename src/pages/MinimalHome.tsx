@@ -10,7 +10,7 @@ import { SkinAvatar } from '../components/SkinAvatar'
 import { LoaderLogo } from '../components/LoaderLogo'
 import { sortInstances } from '../lib/instanceSort'
 import { Box, Typography, Button } from '@/components/material'
-import { Download, Gamepad2, LayoutDashboard, FolderOpen, X } from 'lucide-react'
+import { Download, Gamepad2, LayoutDashboard, FolderOpen, X, Settings } from 'lucide-react'
 import { NewsCarousel } from '../components/NewsCarousel'
 import type { Instance } from '../types'
 
@@ -174,23 +174,34 @@ export function MinimalHome() {
               </Box>
               <Box className="overflow-y-auto max-h-[60vh] p-2 space-y-1">
                 {sortInstances(instances).map(inst => (
-                  <button
+                  <div
                     key={inst.id}
-                    onClick={() => { setSelectedId(inst.id); setShowInstanceList(false); invoke('set_last_selected_instance', { instanceId: inst.id }).catch(() => {}) }}
-                    className={`w-full px-3 py-2 rounded-xl text-left transition-colors flex items-center gap-3 ${
+                    className={`w-full px-3 py-2 rounded-xl transition-colors flex items-center gap-3 ${
                       selected?.id === inst.id
                         ? 'bg-[var(--accent-color)]/10 border border-[var(--accent-color)]/30'
                         : 'hover:bg-surface-100 dark:hover:bg-surface-800'
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-[var(--accent-color)]/10 flex items-center justify-center shrink-0 p-1.5">
-                      <LoaderLogo loader={inst.modloader} versionId={inst.version_id} className="w-full h-full" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{inst.name}</div>
-                      <div className="text-[10px] text-surface-400 mt-0.5">{inst.version_id} · {getLoaderName(inst.modloader)}</div>
-                    </div>
-                  </button>
+                    <button
+                      onClick={() => { setSelectedId(inst.id); setShowInstanceList(false); invoke('set_last_selected_instance', { instanceId: inst.id }).catch(() => {}) }}
+                      className="flex-1 flex items-center gap-3 text-left min-w-0"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-[var(--accent-color)]/10 flex items-center justify-center shrink-0 p-1.5">
+                        <LoaderLogo loader={inst.modloader} versionId={inst.version_id} className="w-full h-full" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{inst.name}</div>
+                        <div className="text-[10px] text-surface-400 mt-0.5">{inst.version_id} · {getLoaderName(inst.modloader)}</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => { setShowInstanceList(false); navigate(`/instances/${inst.id}/manage`) }}
+                      className="p-1.5 rounded-lg hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors shrink-0"
+                      title="管理实例"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-surface-400" />
+                    </button>
+                  </div>
                 ))}
               </Box>
             </Box>

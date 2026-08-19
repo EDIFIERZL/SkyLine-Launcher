@@ -9,14 +9,12 @@ import { useInstanceStore } from '../stores/instanceStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { triggerSilentOptimize } from '../hooks/useMemoryOptimizer'
 import { ResourceDetail } from '../components/ResourceDetail'
-import type { VersionManifest, InstallProgress, VersionEntry, McmodItem, Instance, DownloadKind, ModrinthProject, CurseForgeMod, ModrinthVersion } from '../types'
+import type { VersionManifest, InstallProgress, VersionEntry, McmodItem, Instance, DownloadKind, ModrinthProject, ModrinthVersion } from '../types'
 import {
   Search,
   Download as DownloadIcon,
   Loader2,
   PackageOpen,
-  Globe,
-  BookOpen,
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
@@ -42,11 +40,11 @@ const DOWNLOAD_TABS = [
 
 const SIDEBAR_ITEMS: { value: DownloadKind | 'minecraft'; label: string; desc: string; icon: React.ReactNode }[] = [
   { value: 'minecraft', label: 'Minecraft', desc: '游戏本体下载与安装', icon: <Sparkles className="w-5 h-5" /> },
-  { value: 'mods', label: '模组', desc: 'Modrinth / CurseForge', icon: <Package className="w-5 h-5" /> },
+  { value: 'mods', label: '模组', desc: '游戏模组扩展', icon: <Package className="w-5 h-5" /> },
   { value: 'resourcepacks', label: '资源包', desc: '材质与纹理增强', icon: <Image className="w-5 h-5" /> },
   { value: 'shaderpacks', label: '光影包', desc: '光影与着色效果', icon: <BoxIcon className="w-5 h-5" /> },
-  { value: 'datapacks', label: '数据包', desc: 'Modrinth / CurseForge 数据包', icon: <PackageOpen className="w-5 h-5" /> },
-  { value: 'maps', label: '地图', desc: 'Modrinth / CurseForge 地图', icon: <Map className="w-5 h-5" /> },
+  { value: 'datapacks', label: '数据包', desc: '游戏数据包', icon: <PackageOpen className="w-5 h-5" /> },
+  { value: 'maps', label: '地图', desc: '游戏地图', icon: <Map className="w-5 h-5" /> },
   { value: 'modpacks', label: '整合包', desc: '一键整合包安装', icon: <PackageOpen className="w-5 h-5" /> },
 ]
 
@@ -57,8 +55,6 @@ interface LoaderVersion {
 interface OptiFineVer {
   mc_version: string; version: string; mirror_url: string; date: string | null
 }
-
-type Source = 'modrinth' | 'curseforge'
 
 type LoaderKey = 'vanilla' | 'forge' | 'neoforge' | 'fabric' | 'fabric-api' | 'quilt' | 'qsl' | 'optifine'
 
@@ -109,7 +105,6 @@ const TYPE_BADGE: Record<GroupKey, { label: string; cls: string }> = {
 
 type SelectedItem =
   | { type: 'modrinth'; project: ModrinthProject }
-  | { type: 'curseforge'; mod: CurseForgeMod }
   | null
 
 export function Download() {
@@ -129,16 +124,13 @@ export function Download() {
   const [progress, setProgress] = useState<InstallProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  
-  const [source, setSource] = useState<Source>('modrinth')
+
   const [query, setQuery] = useState('')
   const [gameVersion, setGameVersion] = useState('')
   const [loaderFilter, setLoaderFilter] = useState('')
   const [mrResults, setMrResults] = useState<ModrinthProject[]>([])
-  const [cfResults, setCfResults] = useState<CurseForgeMod[]>([])
   const [mcmodMap, setMcmodMap] = useState<Record<string, McmodItem>>({})
   const [recs, setRecs] = useState<ModrinthProject[]>([])
-  const [cfRecs, setCfRecs] = useState<CurseForgeMod[]>([])
   const [recsLoading, setRecsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [offset, setOffset] = useState(0)
@@ -321,7 +313,7 @@ export function Download() {
       const dup = useDownloadStore
         .getState()
         .tasks.find((t) => t.status === 'downloading' && t.instanceId === targetKey)
-      if (!confirm(`已有相同的实例「${dup?.title ?? taskTitle}」正在下载中，是否仍然继续？`)) return
+      if (!confirm(`已有相同的实例「${dup?.title ?? taskTitle}」正在下载中，是否继续？`)) return
     }
 
     activeTaskId.current = taskId
@@ -363,100 +355,73 @@ export function Download() {
     setError(null)
     const gv = gameVersion || null
     try {
-      if (source === 'modrinth') {
-        let res: ModrinthProject[]
-        const ldrs = (tab === 'mods' && loaderFilter) ? [loaderFilter] : undefined
-        if (tab === 'mods') {
-          res = await invoke<ModrinthProject[]>('search_modrinth_mods', { query, limit: 20, offset: newOffset, gameVersion: gv, loaders: ldrs })
-        } else if (tab === 'resourcepacks') {
-          res = await invoke<ModrinthProject[]>('search_resource_packs', { query, limit: 20, offset: newOffset, gameVersion: gv })
-        } else if (tab === 'shaderpacks') {
-          res = await invoke<ModrinthProject[]>('search_shader_packs', { query, limit: 20, offset: newOffset, gameVersion: gv })
-        } else if (tab === 'datapacks') {
-          res = await invoke<ModrinthProject[]>('search_datapacks', { query, limit: 20, offset: newOffset, gameVersion: gv })
-        } else if (tab === 'maps') {
-          res = await invoke<ModrinthProject[]>('search_worlds', { query, limit: 20, offset: newOffset, gameVersion: gv })
-        } else {
-          res = await invoke<ModrinthProject[]>('search_modpacks', { query, limit: 20, offset: newOffset, gameVersion: gv })
-        }
-        setMrResults(res)
+      let res: ModrinthProject[]
+      const ldrs = (tab === 'mods' && loaderFilter) ? [loaderFilter] : undefined
+      if (tab === 'mods') {
+        res = await invoke<ModrinthProject[]>('search_modrinth_mods', { query, limit: 20, offset: newOffset, gameVersion: gv, loaders: ldrs })
+      } else if (tab === 'resourcepacks') {
+        res = await invoke<ModrinthProject[]>('search_resource_packs', { query, limit: 20, offset: newOffset, gameVersion: gv })
+      } else if (tab === 'shaderpacks') {
+        res = await invoke<ModrinthProject[]>('search_shader_packs', { query, limit: 20, offset: newOffset, gameVersion: gv })
+      } else if (tab === 'datapacks') {
+        res = await invoke<ModrinthProject[]>('search_datapacks', { query, limit: 20, offset: newOffset, gameVersion: gv })
+      } else if (tab === 'maps') {
+        res = await invoke<ModrinthProject[]>('search_worlds', { query, limit: 20, offset: newOffset, gameVersion: gv })
+      } else {
+        res = await invoke<ModrinthProject[]>('search_modpacks', { query, limit: 20, offset: newOffset, gameVersion: gv })
+      }
+      setMrResults(res)
+      if (tab === 'mods') {
+        const titles = res.slice(0, 8).map((m) => m.title)
+        invoke<McmodItem[]>('enrich_mcmod_batch', { titles }).then((enriched) => {
+          const map: Record<string, McmodItem> = {}
+          enriched.forEach((item, i) => {
+            const project = res[i]
+            if (project) map[project.slug] = item
+          })
+          setMcmodMap(map)
+        }).catch(() => {})
+      }
+      setOffset(newOffset)
+    } catch (e) { setError(String(e)) }
+    setLoading(false)
+  }, [query, tab, gameVersion])
+
+  useEffect(() => {
+    if (query.trim()) searchMods()
+  }, [tab, gameVersion, loaderFilter, searchMods])
+
+  useEffect(() => {
+    if (tab === 'minecraft' || query.trim()) return
+    const gv = gameVersion || null
+    const ldrs = (tab === 'mods' && loaderFilter) ? [loaderFilter] : undefined
+    const cmd =
+      tab === 'mods' ? 'recommended_mods'
+      : tab === 'resourcepacks' ? 'recommended_resource_packs'
+      : tab === 'shaderpacks' ? 'recommended_shader_packs'
+      : 'recommended_modpacks'
+    setRecsLoading(true)
+    invoke<ModrinthProject[]>(cmd, { limit: 12, gameVersion: gv, loaders: ldrs })
+      .then((res) => {
+        setRecs(res)
         if (tab === 'mods') {
           const titles = res.slice(0, 8).map((m) => m.title)
-          invoke<McmodItem[]>('enrich_mcmod_batch', { titles }).then((enriched) => {
+          return invoke<McmodItem[]>('enrich_mcmod_batch', { titles }).then((enriched) => {
             const map: Record<string, McmodItem> = {}
             enriched.forEach((item, i) => {
               const project = res[i]
               if (project) map[project.slug] = item
             })
             setMcmodMap(map)
-          }).catch(() => {})
+          })
         }
-      } else {
-        const cfCategory = (tab === 'maps' || tab === 'datapacks') ? 'datapacks' : tab === 'resourcepacks' ? 'resourcepacks' : tab === 'shaderpacks' ? 'shaderpacks' : tab === 'modpacks' ? 'modpacks' : null
-        const res = await invoke<CurseForgeMod[]>('search_curseforge_category', {
-          query,
-          gameVersion: gv,
-          category: cfCategory,
-        })
-        setCfResults(res)
-      }
-      setOffset(newOffset)
-    } catch (e) { setError(String(e)) }
-    setLoading(false)
-  }, [query, source, tab, gameVersion])
-
-  useEffect(() => {
-    if (query.trim()) searchMods()
-  }, [source, tab, gameVersion, loaderFilter, searchMods])
-
-  useEffect(() => {
-    if (tab === 'minecraft' || query.trim()) return
-    const gv = gameVersion || null
-    const ldrs = (tab === 'mods' && loaderFilter) ? [loaderFilter] : undefined
-    if (source === 'modrinth') {
-      const cmd =
-        tab === 'mods' ? 'recommended_mods'
-        : tab === 'resourcepacks' ? 'recommended_resource_packs'
-        : tab === 'shaderpacks' ? 'recommended_shader_packs'
-        : 'recommended_modpacks'
-      setRecsLoading(true)
-      invoke<ModrinthProject[]>(cmd, { limit: 12, gameVersion: gv, loaders: ldrs })
-        .then((res) => {
-          setRecs(res)
-          if (tab === 'mods') {
-            const titles = res.slice(0, 8).map((m) => m.title)
-            return invoke<McmodItem[]>('enrich_mcmod_batch', { titles }).then((enriched) => {
-              const map: Record<string, McmodItem> = {}
-              enriched.forEach((item, i) => {
-                const project = res[i]
-                if (project) map[project.slug] = item
-              })
-              setMcmodMap(map)
-            })
-          }
-        })
-        .catch(() => {})
-        .finally(() => setRecsLoading(false))
-    } else {
-      // CurseForge recommendations: search with empty query, sorted by downloads
-      setRecsLoading(true)
-      invoke<CurseForgeMod[]>('recommended_curseforge_mods', {
-        limit: 12,
-        gameVersion: gv || undefined,
       })
-        .then((res) => { setCfRecs(res) })
-        .catch(() => {})
-        .finally(() => setRecsLoading(false))
-    }
-  }, [tab, source, query, gameVersion, loaderFilter])
+      .catch(() => {})
+      .finally(() => setRecsLoading(false))
+  }, [tab, query, gameVersion, loaderFilter])
 
   const selectProject = (project: ModrinthProject) => {
     setSelected({ type: 'modrinth', project })
-    setError(null)
-  }
-
-  const selectCf = (mod: CurseForgeMod) => {
-    setSelected({ type: 'curseforge', mod })
     setError(null)
   }
 
@@ -680,8 +645,7 @@ export function Download() {
     return (
       <ResourceDetail
         kind={tab as DownloadKind}
-        project={selected.type === 'modrinth' ? selected.project : null}
-        cfMod={selected.type === 'curseforge' ? selected.mod : null}
+        project={selected.project}
         mcmod={mcmod}
         gameVersion={gameVersion || undefined}
         onClearGameVersion={() => setGameVersion('')}
@@ -701,24 +665,16 @@ export function Download() {
     return (
       <>
         <Box className="flex items-center gap-2 flex-wrap">
-          <Typography variant="caption" color="text.secondary">下载源</Typography>
-          <Box className="flex gap-1 bg-surface-100 dark:bg-surface-800 p-1 rounded-xl w-fit">
-            <Button variant={source === 'modrinth' ? 'contained' : 'text'} size="small"
-              startIcon={<Globe className="w-4 h-4" />} onClick={() => setSource('modrinth')}>Modrinth</Button>
-            <Button variant={source === 'curseforge' ? 'contained' : 'text'} size="small"
-              startIcon={<BookOpen className="w-4 h-4" />} onClick={() => setSource('curseforge')}>CurseForge</Button>
-          </Box>
-        </Box>
-        <Box className="flex items-center gap-2 flex-wrap">
           {tab === 'mods' && (
             <>
-              <Typography variant="caption" color="text.secondary">游戏版本</Typography>
+               <Typography variant="caption" color="text.secondary">游戏版本</Typography>
               <Box className="w-52 shrink-0">
                 <Select
                   value={gameVersion}
                   onChange={(v) => setGameVersion(v)}
                   options={gameVersionOptions}
                   size="small"
+                  renderValue={(v) => v === '' ? '全部版本' : v}
                 />
               </Box>
               <Typography variant="caption" color="text.secondary">加载器</Typography>
@@ -728,6 +684,10 @@ export function Download() {
                   onChange={(v) => setLoaderFilter(v)}
                   options={LOADER_OPTIONS}
                   size="small"
+                  renderValue={(v) => {
+                    const opt = LOADER_OPTIONS.find(o => o.value === v)
+                    return opt ? opt.label : '全部加载器'
+                  }}
                 />
               </Box>
             </>
@@ -741,6 +701,7 @@ export function Download() {
                   onChange={(v) => setGameVersion(v)}
                   options={gameVersionOptions}
                   size="small"
+                  renderValue={(v) => v === '' ? '全部版本' : v}
                 />
               </Box>
             </>
@@ -754,7 +715,7 @@ export function Download() {
             先选游戏版本，搜索结果将只显示兼容该版本的资源
           </Typography>
         </Box>
-        <form onSubmit={(e) => { e.preventDefault(); searchMods() }} className="flex gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); searchMods() }} className="input-action-row">
           <Box className="flex-1">
             <Input placeholder={`搜索${categoryLabel}...`}
               value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -770,7 +731,7 @@ export function Download() {
             </Box>
             {recsLoading ? (
               <Loading />
-            ) : source === 'modrinth' && recs.length > 0 ? (
+            ) : recs.length > 0 ? (
               <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {recs.map((mod) => {
                   const cn = mcmodMap[mod.slug]
@@ -799,34 +760,13 @@ export function Download() {
                   )
                 })}
               </Box>
-            ) : source === 'curseforge' && cfRecs.length > 0 ? (
-              <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {cfRecs.map((mod) => (
-                  <Card key={mod.id} onClick={() => selectCf(mod)} hoverable>
-                    <Box className="flex gap-3">
-                      {mod.logo_url && <img src={mod.logo_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
-                      <Box className="min-w-0 flex-1">
-                        <Typography variant="subtitle2" className="truncate">{mod.name}</Typography>
-                        {mod.authors.length > 0 && <Typography variant="caption" color="text.secondary">{mod.authors.join(', ')}</Typography>}
-                        <Typography variant="body2" color="text.secondary" className="mt-1 line-clamp-2">{mod.summary}</Typography>
-                        <Box className="flex items-center gap-2 mt-2">
-                          <Typography variant="caption" color="text.secondary">{formatDownloads(mod.downloads)} 下载</Typography>
-                          {mod.game_versions.slice(0, 2).map((gv) => (
-                            <Chip key={gv} label={gv} size="small" variant="outlined" />
-                          ))}
-                        </Box>
-                      </Box>
-                    </Box>
-                  </Card>
-                ))}
-              </Box>
             ) : (
-              <EmptyState icon={<PackageOpen className="w-12 h-12" />} title={source === 'curseforge' ? '请先在设置中填写 CurseForge API Key' : '暂无推荐'} />
+              <EmptyState icon={<PackageOpen className="w-12 h-12" />} title="暂无推荐" />
             )}
           </>
         ) : loading ? (
           <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-surface-400" /></div>
-        ) : source === 'modrinth' && mrResults.length > 0 ? (
+        ) : mrResults.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {mrResults.map((mod) => {
@@ -864,27 +804,6 @@ export function Download() {
               </Button>
             </div>
           </>
-        ) : source === 'curseforge' && cfResults.length > 0 ? (
-          <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {cfResults.map((mod) => (
-              <Card key={mod.id} onClick={() => selectCf(mod)} hoverable>
-                <Box className="flex gap-3">
-                  {mod.logo_url && <img src={mod.logo_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
-                  <Box className="min-w-0 flex-1">
-                    <Typography variant="subtitle2" className="truncate">{mod.name}</Typography>
-                    {mod.authors.length > 0 && <Typography variant="caption" color="text.secondary">{mod.authors.join(', ')}</Typography>}
-                    <Typography variant="body2" color="text.secondary" className="mt-1 line-clamp-2">{mod.summary}</Typography>
-                    <Box className="flex items-center gap-2 mt-2">
-                      <Typography variant="caption" color="text.secondary">{formatDownloads(mod.downloads)} 下载</Typography>
-                      {mod.game_versions.slice(0, 2).map((gv) => (
-                        <Chip key={gv} label={gv} size="small" variant="outlined" />
-                      ))}
-                    </Box>
-                  </Box>
-                </Box>
-              </Card>
-            ))}
-          </Box>
         ) : (
           <EmptyState icon={<PackageOpen className="w-12 h-12" />} title="输入关键词开始搜索" />
         )}
@@ -933,7 +852,7 @@ export function Download() {
     <Box className="space-y-5 max-w-7xl w-full">
       <Box>
         <Typography variant="h5">资源中心</Typography>
-        <Typography variant="body2" color="text.secondary" className="mt-1">下载游戏、模组、资源包等</Typography>
+        <Typography variant="body2" color="text.secondary" className="mt-1">下载各类游戏资源</Typography>
       </Box>
       <Box className="space-y-4">
         <Tabs items={DOWNLOAD_TABS} value={tab} onChange={switchTab} />

@@ -1148,7 +1148,7 @@ export default function AiCrash() {
             </div>
           )}
 
-          <div className="flex gap-2">
+          <div className="input-action-row">
             <input type="file" ref={fileInputRef} className="hidden" accept=".log,.txt,.png,.jpg,.jpeg,.mp4,.webm"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }} />
             <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400 transition-colors" title="上传文件" disabled={loading}>
@@ -1190,7 +1190,7 @@ export default function AiCrash() {
               <input value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} placeholder="输入对话名称..."
                 className="w-full bg-surface-50 dark:bg-surface-900 rounded-xl px-3.5 py-2.5 text-sm text-surface-800 dark:text-surface-200 placeholder-surface-400 dark:placeholder-surface-600 outline-none border border-surface-200 dark:border-white/5 focus:border-blue-400 dark:focus:border-blue-500/30 transition-colors"
                 onKeyDown={(e) => { if (e.key === 'Enter') confirmNewSession() }} autoFocus />
-              <div className="flex gap-2">
+              <div className="input-action-row">
                 <button onClick={() => { setShowNewSessionDialog(false); setNewSessionName('') }} className="flex-1 py-2.5 rounded-xl bg-surface-100 dark:bg-surface-700 hover:bg-surface-200 dark:hover:bg-surface-600 text-surface-600 dark:text-surface-300 transition-colors text-sm">取消</button>
                 <button onClick={confirmNewSession} className="flex-1 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-300 transition-colors text-sm font-medium">创建</button>
               </div>

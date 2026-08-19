@@ -653,7 +653,7 @@ export function Settings() {
                 <Typography variant="subtitle2" className="flex items-center gap-2 mb-3">
                   <FolderOpen className="w-4 h-4 text-[var(--accent-color)]" /> 游戏文件夹
                 </Typography>
-                <Box className="flex items-center gap-2 mb-2">
+                <Box className="input-action-row mb-2">
                   <Input
                     label="游戏存储路径"
                     value={gameFolder}

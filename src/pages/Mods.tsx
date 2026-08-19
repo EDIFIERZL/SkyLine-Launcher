@@ -161,8 +161,7 @@ export function Mods() {
     setImporting(true)
     setMessage(null)
     try {
-      const isMrpack = importPath.endsWith('.mrpack')
-      const cmd = isMrpack ? 'import_modrinth_pack' : 'import_curseforge_pack'
+      const cmd = 'import_modrinth_pack'
       const id = await invoke<string>(cmd, { packPath: importPath })
       setMessage(`导入成功！实例 ID: ${id}`)
       setImportPath('')
@@ -173,13 +172,12 @@ export function Mods() {
     setImporting(false)
   }
 
-  const handleExport = async (format: 'modrinth' | 'curseforge') => {
+  const handleExport = async () => {
     if (!instanceId) return
-    const path = prompt(`输入导出路径 (${format === 'modrinth' ? '.mrpack' : '.zip'}):`, `./${instanceId}.${format === 'modrinth' ? 'mrpack' : 'zip'}`)
+    const path = prompt(`输入导出路径 (.mrpack):`, `./${instanceId}.mrpack`)
     if (!path) return
     try {
-      const cmd = format === 'modrinth' ? 'export_modrinth_pack' : 'export_curseforge_pack'
-      const result = await invoke<string>(cmd, { instanceId, outputPath: path })
+      const result = await invoke<string>('export_modrinth_pack', { instanceId, outputPath: path })
       setMessage(`导出成功: ${result}`)
     } catch (e) {
       setMessage(`导出失败: ${e}`)
@@ -209,7 +207,7 @@ export function Mods() {
           <Button size="small" variant="outlined" startIcon={<Upload className="w-3.5 h-3.5" />} onClick={() => setShowImport(!showImport)}>
             导入
           </Button>
-          <Button size="small" variant="outlined" startIcon={<Download className="w-3.5 h-3.5" />} onClick={() => handleExport('modrinth')}>
+          <Button size="small" variant="outlined" startIcon={<Download className="w-3.5 h-3.5" />} onClick={handleExport}>
             导出
           </Button>
         </Box>
@@ -219,11 +217,11 @@ export function Mods() {
         <Card>
           <Box className="space-y-3">
             <Typography variant="subtitle2">导入模组包</Typography>
-            <Box className="flex gap-2">
+            <Box className="input-action-row">
               <Input
                 value={importPath}
                 onChange={(e) => setImportPath(e.target.value)}
-                placeholder="输入 .mrpack 或 .zip 文件路径"
+                placeholder="输入 .mrpack 文件路径"
                 className="flex-1"
               />
               <Button onClick={handleImport} loading={importing}>导入</Button>
@@ -238,7 +236,7 @@ export function Mods() {
         </AlertBox>
       )}
 
-      <Box className="flex items-center gap-2">
+      <Box className="input-action-row">
         <Box className="flex-1 max-w-xs">
           <Input
             placeholder="搜索模组..."

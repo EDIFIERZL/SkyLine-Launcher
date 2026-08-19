@@ -62,12 +62,15 @@ body {
 }
 
 .app-bg {
-  background-color: var(--app-solid, #0a0a0a);
+  background-color: var(--app-solid, #f6f8fb);
   background-image: var(--app-bg-image, none);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   transition: background-image 0.3s ease, background-color 0.3s ease;
+}
+.dark .app-bg {
+  background-color: var(--app-solid, #0a0a0a);
 }
 
 .app-main {
@@ -1285,6 +1288,72 @@ button:not(:disabled):active {
 @keyframes newsFadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Keep text fields and their action buttons visually separated and usable on narrow windows. */
+.input-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.input-action-row > :first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.input-action-row > input[type='file'] {
+  display: none;
+}
+
+.input-action-row > input:not([type='file']) {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.account-input-action-row {
+  display: flex;
+  align-items: stretch;
+  gap: 1.5rem;
+}
+
+.account-input-action-row > input,
+.account-input-action-row > .MuiTextField-root {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.account-input-action-row > button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .input-action-row {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .input-action-row > :first-child:not(input[type='file']) {
+    flex-basis: 100%;
+  }
+
+  .input-action-row > input:not([type='file']) {
+    flex-basis: 100%;
+  }
+
+  .input-action-row > button {
+    flex: 1 1 auto;
+  }
+
+  .account-input-action-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .account-input-action-row > button {
+    width: 100%;
+  }
 }
 
 @keyframes home-mode-enter {

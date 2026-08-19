@@ -143,8 +143,6 @@ pub enum ModpackType {
     
     Modrinth,
     
-    CuseForge,
-    
     MMC,
     
     HMCL,
@@ -168,9 +166,6 @@ pub fn detect_modpack_type(pack_path: &Path) -> Result<ModpackType, String> {
         let mut manifest_st = String::new();
         if let Ok(mut manifest_file) = archive.by_name("manifest.json") {
             if manifest_file.read_to_string(&mut manifest_st).is_ok() {
-                if manifest_st.contains("minecraftModpack") {
-                    return Ok(ModpackType::CuseForge);
-                }
                 if manifest_st.contains("addonId") || manifest_st.contains("gameId") {
                     return Ok(ModpackType::MCBBS);
                 }
@@ -292,11 +287,14 @@ pub async fn impot_archive_pack(pack_path: &Path) -> Result<String, String> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModrinthIndex {
-    pub fomat_version: u32,
+    #[serde(rename = "formatVersion")]
+    pub format_version: u32,
     pub game: String,
+    #[serde(rename = "versionId")]
     pub version_id: String,
     pub name: String,
-    pub summay: Option<String>,
+    #[serde(default)]
+    pub summary: Option<String>,
     pub files: Vec<ModrinthIndexFile>,
     pub dependencies: std::collections::HashMap<String, String>,
 }
@@ -307,6 +305,7 @@ pub struct ModrinthIndexFile {
     pub hashes: std::collections::HashMap<String, String>,
     pub env: Option<ModrinthEnv>,
     pub downloads: Vec<String>,
+    #[serde(rename = "fileSize")]
     pub file_size: u64,
 }
 
@@ -317,39 +316,9 @@ pub struct ModrinthEnv {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CuseForgeManifest {
-    pub manifest_type: String,
-    pub manifest_version: u32,
-    pub name: String,
-    pub version: String,
-    pub author: String,
-    pub files: Vec<CuseForgeManifestFile>,
-    pub overrides: String,
-    pub minecaft: CuseForgeManifestMinecaft,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CuseForgeManifestFile {
-    pub project_id: u64,
-    pub file_id: u64,
-    pub required: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CuseForgeManifestMinecaft {
-    pub version: String,
-    pub mod_loaders: Vec<CuseForgeManifestLoader>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CuseForgeManifestLoader {
-    pub id: String,
-    pub primary: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MMCPack {
-    pub fomat_version: u32,
+    #[serde(rename = "formatVersion")]
+    pub format_version: u32,
     pub components: Vec<MMCComponent>,
     pub name: String,
     pub uid: String,
@@ -478,95 +447,6 @@ pub async fn import_modrinth_pack(pack_path: &Path) -> Result<String, String> {
     Ok(instance_id)
 }
 
-pub async fn impot_cuseforge_pack(pack_path: &Path) -> Result<String, String> {
-    let file = std::fs::File::open(pack_path).map_err(|e| format!("Cannot open pack file: {}", e))?;
-    let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Invalid zip: {}", e))?;
-
-    let mut manifest_st = String::new();
-    {
-        let mut manifest_file = archive.by_name("manifest.json").map_err(|_| "Missing manifest.json".to_string())?;
-        manifest_file.read_to_string(&mut manifest_st).map_err(|e| e.to_string())?;
-    }
-    let manifest: CuseForgeManifest = serde_json::from_str(&manifest_st).map_err(|e| e.to_string())?;
-
-    let instance_id = manifest.minecaft.version.clone();
-    let instances_di = crate::utils::io::get_instances_di();
-    let instance_dir = instances_di.join(&instance_id);
-
-    std::fs::create_dir_all(&instance_dir.join("mods")).map_err(|e| e.to_string())?;
-
-    let manifest_path = instance_dir.join(".skyline").join("file_manifest.json");
-    let old_manifest = FileManifest::load(&manifest_path);
-
-    let overrides_pefix = format!("{}/", manifest.overrides);
-    let mut new_files: Vec<(String, Vec<u8>, String)> = Vec::new();
-    for i in 0..archive.len() {
-        let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
-        let name = entry.name().to_string();
-        if name.starts_with(&overrides_pefix) {
-            let relative = name.trim_start_matches(&overrides_pefix);
-            if relative.is_empty() || entry.is_dir() { continue; }
-
-            let mut content = Vec::new();
-            entry.read_to_end(&mut content).map_err(|e| e.to_string())?;
-
-            use sha1::Digest;
-            let mut hashe = sha1::Sha1::new();
-            hashe.update(&content);
-            let hash = hex::encode(hashe.finalize());
-
-            new_files.push((relative.to_string(), content, hash));
-        }
-    }
-
-    let actions = smat_mege(&instance_dir, &new_files, old_manifest.as_ref());
-    let (witten, skipped, deleted) = execute_smat_mege(&instance_dir, &actions);
-
-    let mut new_manifest = FileManifest::new(manifest.minecaft.version.clone());
-    for (el_path, _, hash) in &new_files {
-        let target = instance_dir.join(el_path);
-        let size = std::fs::metadata(&target).map(|m| m.len()).unwrap_or(0);
-        new_manifest.files.push(FileInfomation {
-            path: el_path.clone(),
-            hash: hash.clone(),
-            size,
-        });
-    }
-    let _ = new_manifest.save(&manifest_path);
-
-    log::info!(
-        "CurseForge pack imported: {} written, {} skipped, {} deleted",
-        witten, skipped, deleted
-    );
-
-    let primary_loader = manifest.minecaft.mod_loaders.iter().find(|l| l.primary).unwrap_or(&manifest.minecaft.mod_loaders[0]);
-    let modloader = if primary_loader.id.starts_with("forge") {
-        crate::instance::ModLoader::Forge(primary_loader.id.trim_start_matches("forge-").to_string())
-    } else if primary_loader.id.starts_with("fabric") {
-        crate::instance::ModLoader::Fabric(primary_loader.id.trim_start_matches("fabric-").to_string())
-    } else {
-        crate::instance::ModLoader::Vanilla
-    };
-
-    let instance = crate::instance::Instance {
-        id: instance_id.clone(),
-        name: manifest.name,
-        version_id: manifest.minecaft.version,
-        modloader,
-        isolation_mode: crate::instance::IsolationMode::Always,
-        game_dir_override: Some(instance_dir.to_string_lossy().into_owned()),
-        created_at: chrono::Utc::now().to_rfc3339(),
-        ..Default::default()
-    };
-
-    let instance_json = serde_json::to_string_pretty(&instance).map_err(|e| e.to_string())?;
-    let skyline_di = instance_dir.join(".skyline");
-    std::fs::create_dir_all(&skyline_di).map_err(|e| e.to_string())?;
-    std::fs::write(skyline_di.join("instance.json"), &instance_json).map_err(|e| e.to_string())?;
-
-    Ok(instance_id)
-}
-
 pub async fn export_modrinth_pack(instance_id: &str, output_path: &Path) -> Result<String, String> {
     let instance_dir = crate::utils::io::get_instance_dir(instance_id);
 
@@ -611,11 +491,11 @@ pub async fn export_modrinth_pack(instance_id: &str, output_path: &Path) -> Resu
     };
 
     let index = ModrinthIndex {
-        fomat_version: 1,
+        format_version: 1,
         game: "minecraft".into(),
         version_id: instance.version_id.clone(),
         name: instance.name.clone(),
-        summay: None,
+        summary: None,
         files,
         dependencies: [("minecraft".into(), instance.version_id.clone()), ("modloader".into(), modloader_id)].into(),
     };
@@ -629,65 +509,6 @@ pub async fn export_modrinth_pack(instance_id: &str, output_path: &Path) -> Resu
     zip.start_file("modrinth.index.json", options.clone()).map_err(|e| e.to_string())?;
     std::io::Write::write_all(&mut zip, index_json.as_bytes()).map_err(|e| e.to_string())?;
 
-    if mods_di.exists() {
-        for entry in walkdir::WalkDir::new(&mods_di).into_iter().filter_map(|e| e.ok()) {
-            if !entry.file_type().is_file() { continue; }
-            let path = entry.path();
-            let relative = path.strip_prefix(&instance_dir).map_err(|e| e.to_string())?;
-            let data = std::fs::read(path).map_err(|e| e.to_string())?;
-
-            zip.start_file("overrides/".to_string() + &relative.to_string_lossy(), options.clone()).map_err(|e| e.to_string())?;
-            std::io::Write::write_all(&mut zip, &data).map_err(|e| e.to_string())?;
-        }
-    }
-
-    zip.finish().map_err(|e| e.to_string())?;
-    Ok(output_path.to_string_lossy().to_string())
-}
-
-pub async fn expot_cuseforge_pack(instance_id: &str, output_path: &Path) -> Result<String, String> {
-    let instance_dir = crate::utils::io::get_instance_dir(instance_id);
-
-    let instance_json = std::fs::read_to_string(crate::utils::io::get_instance_meta_file(instance_id))
-        .map_err(|e| e.to_string())?;
-    let instance: crate::instance::Instance = serde_json::from_str(&instance_json).map_err(|e| e.to_string())?;
-
-    let modloader_id = match &instance.modloader {
-        crate::instance::ModLoader::Vanilla => "minecraft".into(),
-        crate::instance::ModLoader::Forge(v) => format!("forge-{}", v),
-        crate::instance::ModLoader::Fabric(v) => format!("fabric-{}", v),
-        crate::instance::ModLoader::Quilt(v) => format!("quilt-{}", v),
-        crate::instance::ModLoader::NeoForge(v) => format!("neoforge-{}", v),
-        crate::instance::ModLoader::LiterLoader(v) => format!("literloaderr-{}", v),
-    };
-
-    let manifest = CuseForgeManifest {
-        manifest_type: "minecraftModpack".into(),
-        manifest_version: 1,
-        name: instance.name.clone(),
-        version: "1.0.0".into(),
-        author: "SkyLine Launcher".into(),
-        files: Vec::new(),
-        overrides: "overrides".into(),
-        minecaft: CuseForgeManifestMinecaft {
-            version: instance.version_id.clone(),
-            mod_loaders: vec![CuseForgeManifestLoader {
-                id: modloader_id,
-                primary: true,
-            }],
-        },
-    };
-
-    let manifest_json = serde_json::to_string_pretty(&manifest).map_err(|e| e.to_string())?;
-
-    let file = std::fs::File::create(output_path).map_err(|e| e.to_string())?;
-    let mut zip = zip::ZipWriter::new(file);
-    let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-
-    zip.start_file("manifest.json", options.clone()).map_err(|e| e.to_string())?;
-    std::io::Write::write_all(&mut zip, manifest_json.as_bytes()).map_err(|e| e.to_string())?;
-
-    let mods_di = instance_dir.join("mods");
     if mods_di.exists() {
         for entry in walkdir::WalkDir::new(&mods_di).into_iter().filter_map(|e| e.ok()) {
             if !entry.file_type().is_file() { continue; }

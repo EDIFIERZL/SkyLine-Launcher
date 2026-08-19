@@ -102,10 +102,10 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               }`}
               style={{ minWidth: 140 }}
             >
-              <div className={`p-3 rounded-xl ${localConfig.theme_mode === opt.value ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)]' : 'bg-surface-100 dark:bg-surface-800 text-surface-400'}`}>
+              <div className={`p-3 rounded-xl ${localConfig.theme_mode === opt.value ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)]' : 'bg-surface-100 dark:bg-surface-800 text-surface-500 dark:text-surface-400'}`}>
                 {opt.icon}
               </div>
-              <Typography variant="subtitle1" className="font-semibold">{opt.label}</Typography>
+              <Typography variant="subtitle1" className="font-semibold text-surface-900 dark:text-surface-100">{opt.label}</Typography>
             </div>
           ))}
         </div>
@@ -142,7 +142,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               onChange={(e) => applyAccent(e.target.value)}
               className="absolute inset-0 w-full h-full rounded-xl cursor-pointer opacity-0"
             />
-            <div className="w-full h-full rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-300 dark:border-surface-600 flex items-center justify-center text-sm text-surface-400 font-medium">
+            <div className="w-full h-full rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-300 dark:border-surface-600 flex items-center justify-center text-sm text-surface-500 dark:text-surface-400 font-medium">
               +
             </div>
           </div>
@@ -193,7 +193,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             </div>
           )}
           {!localConfig.background_value && (
-            <Typography variant="body2" color="text.secondary" className="text-xs text-center">
+            <Typography variant="body2" className="text-xs text-center text-surface-500 dark:text-surface-400">
               点击上方按钮选择图片或视频
             </Typography>
           )}
@@ -219,11 +219,11 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               }`}
               style={{ minWidth: 160 }}
             >
-              <div className={`p-3 rounded-xl ${localConfig.home_style === opt.value ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)]' : 'bg-surface-100 dark:bg-surface-800 text-surface-400'}`}>
+              <div className={`p-3 rounded-xl ${localConfig.home_style === opt.value ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)]' : 'bg-surface-100 dark:bg-surface-800 text-surface-500 dark:text-surface-400'}`}>
                 {opt.icon}
               </div>
-              <Typography variant="subtitle1" className="font-semibold">{opt.label}</Typography>
-              <Typography variant="caption" color="text.secondary" className="text-center text-xs">{opt.desc}</Typography>
+              <Typography variant="subtitle1" className="font-semibold text-surface-900 dark:text-surface-100">{opt.label}</Typography>
+              <Typography variant="caption" className="text-center text-xs text-surface-500 dark:text-surface-400">{opt.desc}</Typography>
             </div>
           ))}
         </div>
@@ -239,8 +239,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       <div className="w-full max-w-lg mx-4">
         <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl overflow-hidden border border-surface-200/60 dark:border-surface-700/40">
           <div className="px-8 pt-8 pb-4">
-            <Typography variant="h5" className="font-bold text-center">{current.title}</Typography>
-            <Typography variant="body2" color="text.secondary" className="text-center mt-1">{current.desc}</Typography>
+            <Typography variant="h5" className="font-bold text-center text-surface-900 dark:text-surface-100">{current.title}</Typography>
+            <Typography variant="body2" className="text-center mt-1 text-surface-500 dark:text-surface-400">{current.desc}</Typography>
           </div>
 
           <div className="px-8 pb-6 min-h-[240px] flex items-center justify-center">
@@ -251,7 +251,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             <button
               onClick={() => step > 0 && setStep(step - 1)}
               disabled={step === 0}
-              className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-surface-600 dark:text-surface-300"
               style={{ color: step === 0 ? undefined : localConfig.accent_color }}
             >
               <ChevronLeft className="w-4 h-4" />
@@ -263,7 +263,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 <div
                   key={i}
                   className="w-2 h-2 rounded-full transition-colors"
-                  style={{ backgroundColor: i === step ? localConfig.accent_color : undefined, opacity: i === step ? 1 : 0.3 }}
+                  style={{ backgroundColor: i === step ? localConfig.accent_color : '#94a3b8', opacity: i === step ? 1 : 0.4 }}
                 />
               ))}
             </div>

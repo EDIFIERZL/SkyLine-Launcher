@@ -366,14 +366,23 @@ pub async fn prepare_game_files(config: &LaunchConfig) -> Result<PreparedFiles, 
     extact_natives(config, &meged, &natives_di).await?;
 
     let game_di = get_game_di(config);
-    std::fs::create_dir_all(&game_di).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&game_di).map_err(|e| {
+        log::error!("[launch] create game dir failed: {}", e);
+        e.to_string()
+    })?;
 
-    inject_log4j_config(config, &game_di)?;
+    if let Err(e) = inject_log4j_config(config, &game_di) {
+        log::warn!("[launch] inject_log4j_config non-fatal error: {}", e);
+    }
 
-    update_launcher_profiles(config, &game_di)?;
+    if let Err(e) = update_launcher_profiles(config, &game_di) {
+        log::warn!("[launch] update_launcher_profiles non-fatal error: {}", e);
+    }
 
     #[cfg(target_os = "windows")]
-    set_gpu_pefeence(config)?;
+    if let Err(e) = set_gpu_pefeence(config) {
+        log::warn!("[launch] set_gpu_preference non-fatal error: {}", e);
+    }
 
     
     let authlib_jvm_args = {
@@ -1049,7 +1058,8 @@ fn build_jvm_args(
     ags.push("-Djna.tmpdir=".to_string() + natives_di.to_str().unwrap());
     ags.push("-Dorg.lwjgl.system.SharedLibraryExtractPath=".to_string() + natives_di.to_str().unwrap());
     ags.push("-cp".to_string());
-    ags.push(classpath.join(";"));
+    let sep = if cfg!(target_os = "windows") { ";" } else { ":" };
+    ags.push(classpath.join(sep));
     ags.push(profile.main_class.clone());
 
     Ok(ags)
@@ -1192,29 +1202,51 @@ pub async fn launch_minecraft(
     config: LaunchConfig,
 ) -> Result<GameProcess, String> {
     let t0 = std::time::Instant::now();
-    let files = if let Some(files) = config.preloaded_files.clone() {
-        
-        files
-    } else {
-        prepare_game_files(&config).await?
+    let files = match config.preloaded_files.clone() {
+        Some(files) => files,
+        None => match prepare_game_files(&config).await {
+            Ok(f) => f,
+            Err(e) => {
+                log::error!("[launch] prepare_game_files failed: {}", e);
+                return Err(e);
+            }
+        }
     };
     log::info!("[launch] prepare took {} ms", t0.elapsed().as_millis());
     let t1 = std::time::Instant::now();
-    let (jvm_args, game_args, env) = build_launch_args(&config, &files)?;
+    let (jvm_args, game_args, env) = match build_launch_args(&config, &files) {
+        Ok(v) => v,
+        Err(e) => {
+            log::error!("[launch] build_launch_args failed: {}", e);
+            return Err(e);
+        }
+    };
     log::info!("[launch] build_args took {} ms", t1.elapsed().as_millis());
     log::info!("[launch] game_args = {:?}", game_args);
 
     let game_di = get_game_di(&config);
-    std::fs::create_dir_all(&game_di).map_err(|e| e.to_string())?;
+    if let Err(e) = std::fs::create_dir_all(&game_di) {
+        log::error!("[launch] create game dir failed: {}", e);
+        return Err(e.to_string());
+    }
     let t2 = std::time::Instant::now();
-    let process = GameProcess::spawn(&config.java.path, &jvm_args, &game_args, &env, &game_di, config.process_priority.to_os_priority())?;
+    let process = match GameProcess::spawn(&config.java.path, &jvm_args, &game_args, &env, &game_di, config.process_priority.to_os_priority()) {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!("[launch] spawn failed: {}", e);
+            return Err(e);
+        }
+    };
     log::info!("[launch] spawn took {} ms", t2.elapsed().as_millis());
     let verify = tokio::task::spawn_blocking(move || {
         let result = process.verify_stated(std::time::Duration::from_millis(1200));
         (result, process)
     })
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| {
+        log::error!("[launch] verify_stated task panicked: {}", e);
+        e.to_string()
+    })?;
     if let Err(ref e) = verify.0 {
         crate::mc::crash::mark_abnormal(&get_game_di(&config)).ok();
         log::warn!("[launch] startup crash detected: {}", e);
